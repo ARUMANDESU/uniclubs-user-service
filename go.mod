@@ -1,3 +1,3 @@
-module github.com/ARUMANDESU/university-clubs-backend/user-service
+module github.com/ARUMANDESU/uniclubs-user-service
 
 go 1.21.4
