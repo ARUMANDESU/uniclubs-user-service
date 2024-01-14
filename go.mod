@@ -3,15 +3,18 @@ module github.com/ARUMANDESU/uniclubs-user-service
 go 1.21.4
 
 require (
+	github.com/ARUMANDESU/uniclubs-protos v0.0.2
+	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
+	github.com/golang/protobuf v1.5.3
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	google.golang.org/grpc v1.60.1
 )
 
 require (
-	github.com/ARUMANDESU/uniclubs-protos v0.0.2 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

@@ -2,6 +2,7 @@ package app
 
 import (
 	grpcapp "github.com/ARUMANDESU/uniclubs-user-service/internal/app/grpc"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
 	"log/slog"
 )
 
@@ -10,7 +11,10 @@ type App struct {
 }
 
 func New(log *slog.Logger, grpcPort int) *App {
-	grpcApp := grpcapp.New(log, grpcPort)
+
+	authService := auth.New(log)
+
+	grpcApp := grpcapp.New(log, authService, grpcPort)
 
 	return &App{GRPCSrv: grpcApp}
 }

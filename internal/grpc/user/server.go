@@ -3,69 +3,117 @@ package user
 import (
 	"context"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	validation "github.com/go-ozzo/ozzo-validation"
+	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+type Auth interface {
+	Login(ctx context.Context,
+		email string,
+		password string,
+	) (token string, err error)
+	Register(ctx context.Context,
+		user domain.User,
+	) (userID int64, err error)
+	Logout(ctx context.Context, sessionToken string) error
+	CheckUserRole(userId int64, roles []userv1.Role) (bool, error)
+}
 
 type serverApi struct {
 	userv1.UnimplementedUserServer
+	auth Auth
 }
 
-func Register(gRPC *grpc.Server) {
-	userv1.RegisterUserServer(gRPC, &serverApi{})
+func Register(gRPC *grpc.Server, auth Auth) {
+	userv1.RegisterUserServer(gRPC, &serverApi{auth: auth})
 }
 
-func (s serverApi) Register(ctx context.Context, in *userv1.RegisterRequest) (*userv1.RegisterResponse, error) {
+func (s serverApi) Register(ctx context.Context, req *userv1.RegisterRequest) (*userv1.RegisterResponse, error) {
+
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.Email, validation.Required, is.Email),
+		validation.Field(&req.Password, validation.Required, validation.Length(6, 64)),
+		validation.Field(&req.Barcode, validation.Required),
+		validation.Field(&req.FirstName, validation.Required),
+		validation.Field(&req.LastName, validation.Required),
+		validation.Field(&req.Major, validation.Required),
+		validation.Field(&req.Year, validation.Required),
+		validation.Field(&req.GroupName, validation.Required),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	user := domain.User{
+		FirstName: req.GetFirstName(),
+		LastName:  req.GetLastName(),
+		Email:     req.GetEmail(),
+		Password:  req.GetPassword(),
+		Barcode:   req.GetBarcode(),
+		Major:     req.GetMajor(),
+		Group:     req.GetGroupName(),
+		Year:      int(req.GetYear()),
+	}
+
+	userID, err := s.auth.Register(ctx, user)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	return &userv1.RegisterResponse{UserId: userID}, nil
+}
+
+func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) UpdateUser(ctx context.Context, in *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {
+func (s serverApi) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*empty.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) DeleteUser(ctx context.Context, in *userv1.DeleteUserRequest) (*empty.Empty, error) {
+func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) Login(ctx context.Context, in *userv1.LoginRequest) (*userv1.LoginResponse, error) {
+func (s serverApi) Logout(ctx context.Context, req *userv1.LogoutRequest) (*empty.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) Logout(ctx context.Context, in *userv1.LogoutRequest) (*empty.Empty, error) {
+func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleRequest) (*userv1.CheckUserRoleResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) CheckUserRole(ctx context.Context, in *userv1.CheckUserRoleRequest) (*userv1.CheckUserRoleResponse, error) {
+func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.GetUserResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) GetUser(ctx context.Context, in *userv1.GetUserRequest) (*userv1.GetUserResponse, error) {
+func (s serverApi) ListUsers(ctx context.Context, req *userv1.ListUsersRequest) (*userv1.ListUsersResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) ListUsers(ctx context.Context, in *userv1.ListUsersRequest) (*userv1.ListUsersResponse, error) {
+func (s serverApi) VerifyEmail(ctx context.Context, req *userv1.VerifyEmailRequest) (*empty.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) VerifyEmail(ctx context.Context, in *userv1.VerifyEmailRequest) (*empty.Empty, error) {
+func (s serverApi) UnlockAccount(ctx context.Context, req *userv1.UnlockAccountRequest) (*empty.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s serverApi) UnlockAccount(ctx context.Context, in *userv1.UnlockAccountRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s serverApi) LockAccount(ctx context.Context, in *userv1.LockAccountRequest) (*empty.Empty, error) {
+func (s serverApi) LockAccount(ctx context.Context, req *userv1.LockAccountRequest) (*empty.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }

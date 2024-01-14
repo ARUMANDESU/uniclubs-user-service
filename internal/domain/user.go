@@ -1,8 +1,6 @@
-package models
+package domain
 
-import (
-	"time"
-)
+import "time"
 
 type User struct {
 	ID          int64     `json:"ID"`
@@ -10,7 +8,6 @@ type User struct {
 	LastName    string    `json:"secondName"`
 	Email       string    `json:"email"`
 	Password    string    `json:"-"`
-	Activated   bool      `json:"activated"`
 	CreatedAt   time.Time `json:"created_at"`
 	Role        string    `json:"role"`
 	Barcode     string    `json:"barcode"`
