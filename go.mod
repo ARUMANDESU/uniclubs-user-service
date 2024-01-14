@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/ARUMANDESU/uniclubs-protos v0.0.2 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect

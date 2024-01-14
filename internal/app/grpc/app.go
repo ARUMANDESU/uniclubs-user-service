@@ -2,6 +2,7 @@ package grpcapp
 
 import (
 	"fmt"
+	userSrv "github.com/ARUMANDESU/uniclubs-user-service/internal/grpc/user"
 	"google.golang.org/grpc"
 	"log/slog"
 	"net"
@@ -15,6 +16,8 @@ type App struct {
 
 func New(log *slog.Logger, port int) *App {
 	gRPCServer := grpc.NewServer()
+
+	userSrv.Register(gRPCServer)
 
 	return &App{
 		log:        log,
