@@ -2,8 +2,10 @@ package user
 
 import (
 	"context"
+	"errors"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -56,12 +58,15 @@ func (s serverApi) Register(ctx context.Context, req *userv1.RegisterRequest) (*
 		Password:  req.GetPassword(),
 		Barcode:   req.GetBarcode(),
 		Major:     req.GetMajor(),
-		Group:     req.GetGroupName(),
+		GroupName: req.GetGroupName(),
 		Year:      int(req.GetYear()),
 	}
 
 	userID, err := s.auth.Register(ctx, user)
 	if err != nil {
+		if errors.Is(err, auth.ErrUserExists) {
+			return nil, status.Error(codes.AlreadyExists, "user already exists")
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 

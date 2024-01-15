@@ -5,17 +5,17 @@ import (
 )
 
 type User struct {
-	ID          int64     `json:"ID"`
-	FirstName   string    `json:"firstName"`
-	LastName    string    `json:"secondName"`
-	Email       string    `json:"email"`
-	Password    string    `json:"-"`
-	Activated   bool      `json:"activated"`
-	CreatedAt   time.Time `json:"created_at"`
-	Role        string    `json:"role"`
-	Barcode     string    `json:"barcode"`
-	PhoneNumber string    `json:"phoneNumber"`
-	Major       string    `json:"major"`
-	Group       string    `json:"group"`
-	Year        int       `json:"year"`
+	ID           int64     `json:"id"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"second_name"`
+	Email        string    `json:"email"`
+	PasswordHash []byte    `json:"-"`
+	Activated    bool      `json:"activated"`
+	CreatedAt    time.Time `json:"created_at"`
+	Role         string    `json:"role"`
+	Barcode      string    `json:"barcode"`
+	PhoneNumber  string    `json:"phone_number"`
+	Major        string    `json:"major"`
+	GroupName    string    `json:"group_name"`
+	Year         int       `json:"year"`
 }
