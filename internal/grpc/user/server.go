@@ -94,6 +94,9 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 
 	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			return nil, status.Error(codes.InvalidArgument, "invalid email or password")
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

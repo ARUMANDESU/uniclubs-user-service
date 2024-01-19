@@ -8,6 +8,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
+	token2 "github.com/ARUMANDESU/uniclubs-user-service/pkg/token"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 )
@@ -46,6 +47,10 @@ func (a Auth) Login(ctx context.Context, email string, password string) (token s
 
 	user, err := a.usrStorage.GetUserByEmail(ctx, email)
 	if err != nil {
+		log.Error("failed to get user", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -57,7 +62,11 @@ func (a Auth) Login(ctx context.Context, email string, password string) (token s
 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	token = "lolkek" //TODO: make norm sessionTokenGenerate
+	token, err = token2.GenerateSessionToken()
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
 	err = a.sessionStorage.Create(ctx, token, user.ID)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
