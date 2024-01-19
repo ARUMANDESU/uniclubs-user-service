@@ -5,6 +5,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/postgresql"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/redis"
 	"log/slog"
 )
 
@@ -18,7 +19,12 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	if err != nil {
 		panic(err)
 	}
-	authService := auth.New(log, storage)
+	sessionStorage, err := redis.New(cfg.RedisURL)
+	if err != nil {
+		panic(err)
+	}
+
+	authService := auth.New(log, storage, sessionStorage)
 
 	grpcApp := grpcapp.New(log, authService, cfg.GRPC.Port)
 

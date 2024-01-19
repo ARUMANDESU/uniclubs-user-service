@@ -13,16 +13,22 @@ import (
 )
 
 type Auth struct {
-	log        *slog.Logger
-	usrStorage UserStorage
+	log            *slog.Logger
+	usrStorage     UserStorage
+	sessionStorage SessionStorage
 }
 
 type UserStorage interface {
 	SaveUser(ctx context.Context, user *models.User) error
-	GetUser(ctx context.Context, userID int64) (user models.User, err error)
+	GetUserByID(ctx context.Context, userID int64) (user *models.User, err error)
+	GetUserByEmail(ctx context.Context, email string) (user *models.User, err error)
 }
 
-//TODO: interface for session management
+type SessionStorage interface {
+	Create(ctx context.Context, sessionToken string, userID int64) error
+	Get(ctx context.Context, sessionToken string) (userID int64, err error)
+	Delete(ctx context.Context, sessionToken string) error
+}
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
@@ -30,13 +36,34 @@ var (
 	ErrUserNotExist       = errors.New("user does not exist")
 )
 
-func New(log *slog.Logger, usrStorage UserStorage) *Auth {
-	return &Auth{log: log, usrStorage: usrStorage}
+func New(log *slog.Logger, usrStorage UserStorage, sessionStorage SessionStorage) *Auth {
+	return &Auth{log: log, usrStorage: usrStorage, sessionStorage: sessionStorage}
 }
 
 func (a Auth) Login(ctx context.Context, email string, password string) (token string, err error) {
-	//TODO implement me
-	panic("implement me")
+	const op = "authService.Login"
+	log := a.log.With(slog.String("op", op))
+
+	user, err := a.usrStorage.GetUserByEmail(ctx, email)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
+		log.Info("invalid credentials", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+	}
+
+	token = "lolkek" //TODO: make norm sessionTokenGenerate
+	err = a.sessionStorage.Create(ctx, token, user.ID)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return token, nil
 }
 
 func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err error) {

@@ -65,7 +65,29 @@ func (s *Storage) SaveUser(ctx context.Context, user *models.User) error {
 	return nil
 }
 
-func (s *Storage) GetUser(ctx context.Context, userID int64) (user models.User, err error) {
+func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	const op = "storage.postgresql.GetUserByEmail"
+
+	stmt, err := s.DB.Prepare(`
+		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
+		FROM users u LEFT JOIN roles r
+		ON  u.role_id = r.id
+		WHERE email = $1;
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	result := stmt.QueryRowContext(ctx, email)
+	user := models.User{}
+	err = result.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.FirstName, &user.LastName, &user.CreatedAt, &user.Barcode, &user.Major, &user.GroupName, &user.Year, &user.Role)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &user, nil
 }

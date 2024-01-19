@@ -11,6 +11,7 @@ type Config struct {
 	Env         string `yaml:"env" env-default:"local"`
 	GRPC        GRPC   `yaml:"grpc"`
 	DatabaseDSN string `yaml:"database_dsn" env-required:"true"`
+	RedisURL    string `yaml:"redis_url" env-required:"true"`
 }
 
 type GRPC struct {
