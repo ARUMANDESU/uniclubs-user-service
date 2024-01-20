@@ -82,10 +82,15 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
 	result := stmt.QueryRowContext(ctx, email)
 	user := models.User{}
+
 	err = result.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.FirstName, &user.LastName, &user.CreatedAt, &user.Barcode, &user.Major, &user.GroupName, &user.Year, &user.Role)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 

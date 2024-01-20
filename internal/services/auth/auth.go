@@ -47,11 +47,22 @@ func (a Auth) Login(ctx context.Context, email string, password string) (token s
 
 	user, err := a.usrStorage.GetUserByEmail(ctx, email)
 	if err != nil {
-		log.Error("failed to get user", slog.Attr{
-			Key:   "error",
-			Value: slog.StringValue(err.Error()),
-		})
-		return "", fmt.Errorf("%s: %w", op, err)
+
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user does not exists", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+			return "", fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to get user", slog.Attr{
+				Key:   "error",
+				Value: slog.StringValue(err.Error()),
+			})
+			return "", fmt.Errorf("%s: %w", op, err)
+		}
+
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
