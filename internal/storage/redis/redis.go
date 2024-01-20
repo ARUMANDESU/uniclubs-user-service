@@ -34,7 +34,7 @@ func (s Storage) Create(ctx context.Context, sessionToken string, userID int64) 
 	const op = "storage.redis.Create"
 
 	err := s.client.Set(ctx, sessionToken, userID, time.Hour)
-	if err != nil {
+	if err.Err() != nil {
 		return fmt.Errorf("%s: %w", op, err.Err())
 	}
 
@@ -49,7 +49,7 @@ func (s Storage) Get(ctx context.Context, sessionToken string) (userID int64, er
 func (s Storage) Delete(ctx context.Context, sessionToken string) error {
 	const op = "storage.redis.Delete"
 	err := s.client.Del(ctx, sessionToken)
-	if err != nil {
+	if err.Err() != nil {
 		return fmt.Errorf("%s: %w", op, err.Err())
 	}
 

@@ -23,6 +23,11 @@ func New(databaseDSN string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	err = db.Ping()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
 	return &Storage{DB: db}, nil
 }
 
@@ -72,7 +77,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, 
 		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
-		WHERE id = $1;
+		WHERE u.id = $1;
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -99,7 +104,7 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
-		WHERE email = $1;
+		WHERE u.email = $1;
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

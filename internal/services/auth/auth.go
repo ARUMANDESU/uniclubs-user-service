@@ -80,6 +80,10 @@ func (a Auth) Login(ctx context.Context, email string, password string) (token s
 
 	err = a.sessionStorage.Create(ctx, token, user.ID)
 	if err != nil {
+		log.Info("can not save session", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
