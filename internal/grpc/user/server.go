@@ -104,8 +104,17 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 }
 
 func (s serverApi) Logout(ctx context.Context, req *userv1.LogoutRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validation.Validate(req.GetSessionToken(), validation.Required)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = s.auth.Logout(ctx, req.GetSessionToken())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &empty.Empty{}, nil
 }
 
 func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleRequest) (*userv1.CheckUserRoleResponse, error) {

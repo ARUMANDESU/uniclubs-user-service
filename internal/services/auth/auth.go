@@ -128,8 +128,19 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 }
 
 func (a Auth) Logout(ctx context.Context, sessionToken string) error {
-	//TODO implement me
-	panic("implement me")
+	const op = "authService.Logout"
+	log := a.log.With(slog.String("op", op))
+
+	err := a.sessionStorage.Delete(ctx, sessionToken)
+	if err != nil {
+		log.Error("failed to delete session", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }
 
 func (a Auth) CheckUserRole(userId int64, roles []userv1.Role) (bool, error) {

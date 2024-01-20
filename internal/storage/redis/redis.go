@@ -31,9 +31,11 @@ func New(redisURL string) (*Storage, error) {
 }
 
 func (s Storage) Create(ctx context.Context, sessionToken string, userID int64) error {
+	const op = "storage.redis.Create"
+
 	err := s.client.Set(ctx, sessionToken, userID, time.Hour)
 	if err != nil {
-		return err.Err()
+		return fmt.Errorf("%s: %w", op, err.Err())
 	}
 
 	return nil
@@ -45,6 +47,11 @@ func (s Storage) Get(ctx context.Context, sessionToken string) (userID int64, er
 }
 
 func (s Storage) Delete(ctx context.Context, sessionToken string) error {
-	//TODO implement me
-	panic("implement me")
+	const op = "storage.redis.Delete"
+	err := s.client.Del(ctx, sessionToken)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err.Err())
+	}
+
+	return nil
 }
