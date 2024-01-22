@@ -14,7 +14,7 @@ func main() {
 	var postgresURL, migrationsPath string
 
 	flag.StringVar(&postgresURL, "postgres-url", "postgresql://username:password@localhost:5432/databaseName", "PostgreSQL database URL")
-	flag.StringVar(&migrationsPath, "migration-path", "", "path to migrations")
+	flag.StringVar(&migrationsPath, "migration-path", "./migrations", "path to migrations")
 	flag.Parse()
 
 	validate(postgresURL, migrationsPath)

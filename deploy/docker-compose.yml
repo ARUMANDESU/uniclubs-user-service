@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  user-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "44044:44044"
+    networks:
+      - new
+    environment:
+      - ENV=local
+      - DATABASE_DSN=postgres://postgres:password@postgres:5432/userdb
+      - REDIS_URL=redis://redis:6379
+      - GRPC_PORT=44044
+      - GRPC_TIMEOUT=1h
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      new:
+        aliases:
+          - database
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: userdb
+
+  redis:
+    image: redis/redis-stack:latest
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - new
+
+
+
+networks:
+    new:
+
+volumes:
+  postgres-data:
+  redis-data:
