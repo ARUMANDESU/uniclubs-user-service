@@ -18,9 +18,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o ./build/migrator/main ./cmd/migrator
 
 # Define environment variables for PostgreSQL and Redis connections.
 # These values can be overridden when running the container.
-ENV ENV="local"\
-    DATABASE_DSN="postgresql://postgres:admin@localhost:5432/user_service" \
-    REDIS_URL="redis://:@localhost:6379"\
+ENV ENV="dev"\
+    DATABASE_DSN="postgres://postgres:password@postgres:5432/userdb" \
+    REDIS_URL="redis://redis"\
     GRPC_PORT=44044\
     GRPC_TIMEOUT=1h
 
@@ -28,6 +28,7 @@ ENV ENV="local"\
 EXPOSE 44044
 
 # Run the application.
-CMD ["./build/user-server/main"]
-CMD ["./build/migrator/main --postgres-url=postgresql://postgres:admin@localhost:5432/user_service --migration-path=./migrations"]
+CMD ["./build/migrator/main", "--postgres-url=postgres://postgres:password@postgres:5432/userdb?sslmode=disable", "--migration-path=./migrations"]
+ENTRYPOINT ["./build/user-server/main"]
+
 

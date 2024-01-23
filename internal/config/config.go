@@ -23,7 +23,7 @@ type GRPC struct {
 func MustLoad() *Config {
 	path := fetchConfigPath()
 	if path == "" {
-		panic("config path is empty")
+		return MustLoadFromEnv()
 	}
 
 	return MustLoadByPath(path)
@@ -42,10 +42,7 @@ func LoadByPath(configPath string) (*Config, error) {
 	var cfg Config
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		if err = cleanenv.ReadEnv(&cfg); err != nil {
-			return nil, fmt.Errorf("failed to read env: %w", err)
-		}
-		return &cfg, nil
+		return nil, fmt.Errorf("there is no config file: %w", err)
 	}
 
 	err := cleanenv.ReadConfig(configPath, &cfg)
@@ -56,10 +53,19 @@ func LoadByPath(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
+func MustLoadFromEnv() *Config {
+	var cfg Config
+
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		panic("Env empty")
+	}
+	return &cfg
+}
+
 func fetchConfigPath() string {
 	var res string
 
-	flag.StringVar(&res, "config", "./config/local.yaml", "path to config file")
+	flag.StringVar(&res, "config", "", "path to config file")
 	flag.Parse()
 
 	if res == "" {

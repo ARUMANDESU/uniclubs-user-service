@@ -2,19 +2,11 @@ version: '3.8'
 
 services:
   user-service:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    build: ..
     ports:
       - "44044:44044"
     networks:
       - new
-    environment:
-      - ENV=local
-      - DATABASE_DSN=postgres://postgres:password@postgres:5432/userdb
-      - REDIS_URL=redis://redis:6379
-      - GRPC_PORT=44044
-      - GRPC_TIMEOUT=1h
     depends_on:
       - postgres
       - redis
@@ -36,6 +28,7 @@ services:
 
   redis:
     image: redis/redis-stack:latest
+    container_name: "redis"
     volumes:
       - redis-data:/data
     ports:
