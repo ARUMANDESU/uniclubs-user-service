@@ -29,6 +29,4 @@ EXPOSE 44044
 
 # Run the application.
 CMD ["./build/migrator/main", "--postgres-url=postgres://postgres:password@postgres:5432/userdb?sslmode=disable", "--migration-path=./migrations"]
-ENTRYPOINT ["./build/user-server/main"]
-
-
+ENTRYPOINT ["./build/user-server/main", "--config=./config/dev.yaml"]
