@@ -73,16 +73,6 @@ func (s serverApi) Register(ctx context.Context, req *userv1.RegisterRequest) (*
 	return &userv1.RegisterResponse{UserId: userID}, nil
 }
 
-func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s serverApi) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error) {
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.Email, validation.Required, is.Email),
@@ -115,6 +105,16 @@ func (s serverApi) Logout(ctx context.Context, req *userv1.LogoutRequest) (*empt
 	}
 
 	return &empty.Empty{}, nil
+}
+
+func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s serverApi) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*empty.Empty, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleRequest) (*userv1.CheckUserRoleResponse, error) {

@@ -43,6 +43,8 @@ func (s *Storage) SaveUser(ctx context.Context, user *models.User) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	defer stmt.Close()
+
 	args := []any{
 		user.Email,
 		user.PasswordHash,
@@ -83,6 +85,8 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, 
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	defer stmt.Close()
+
 	result := stmt.QueryRowContext(ctx, userID)
 	user := models.User{}
 
@@ -109,6 +113,8 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	defer stmt.Close()
 
 	result := stmt.QueryRowContext(ctx, email)
 	user := models.User{}
