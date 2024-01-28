@@ -35,6 +35,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrUserExists         = errors.New("user already exists")
 	ErrUserNotExist       = errors.New("user does not exist")
+	ErrSessionNotExists   = errors.New("session does not exists")
 )
 
 func New(log *slog.Logger, usrStorage UserStorage, sessionStorage SessionStorage) *Auth {
@@ -145,6 +146,27 @@ func (a Auth) Logout(ctx context.Context, sessionToken string) error {
 	}
 
 	return nil
+}
+
+func (a Auth) Authenticate(ctx context.Context, sessionToken string) (userID int64, err error) {
+	const op = "authService.Authenticate"
+	log := a.log.With(slog.String("op", op))
+
+	userID, err = a.sessionStorage.Get(ctx, sessionToken)
+	if err != nil {
+		log.Error("failed to get session", slog.Attr{
+			Key:   "error",
+			Value: slog.StringValue(err.Error()),
+		})
+		switch {
+		case errors.Is(err, storage.ErrSessionNotExists):
+			return 0, fmt.Errorf("%s, %w", op, ErrSessionNotExists)
+		default:
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return userID, nil
 }
 
 func (a Auth) CheckUserRole(userId int64, roles []userv1.Role) (bool, error) {

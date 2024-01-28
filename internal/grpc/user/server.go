@@ -19,10 +19,9 @@ type Auth interface {
 		email string,
 		password string,
 	) (token string, err error)
-	Register(ctx context.Context,
-		user domain.User,
-	) (userID int64, err error)
+	Register(ctx context.Context, user domain.User) (userID int64, err error)
 	Logout(ctx context.Context, sessionToken string) error
+	Authenticate(ctx context.Context, sessionToken string) (userID int64, err error)
 	CheckUserRole(userId int64, roles []userv1.Role) (bool, error)
 }
 
@@ -94,7 +93,7 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 }
 
 func (s serverApi) Logout(ctx context.Context, req *userv1.LogoutRequest) (*empty.Empty, error) {
-	err := validation.Validate(req.GetSessionToken(), validation.Required)
+	err := validation.Validate(&req.SessionToken, validation.Required)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -105,6 +104,23 @@ func (s serverApi) Logout(ctx context.Context, req *userv1.LogoutRequest) (*empt
 	}
 
 	return &empty.Empty{}, nil
+}
+
+func (s serverApi) Authenticate(ctx context.Context, req *userv1.AuthenticateRequest) (*userv1.AuthenticateResponse, error) {
+	err := validation.Validate(&req.SessionToken, validation.Required)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	userID, err := s.auth.Authenticate(ctx, req.GetSessionToken())
+	if err != nil {
+		if errors.Is(err, auth.ErrSessionNotExists) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &userv1.AuthenticateResponse{UserId: userID}, nil
 }
 
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {

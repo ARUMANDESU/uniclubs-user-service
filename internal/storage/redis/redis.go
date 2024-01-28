@@ -2,7 +2,9 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"strconv"
@@ -47,6 +49,9 @@ func (s Storage) Get(ctx context.Context, sessionToken string) (int64, error) {
 
 	val, err := s.client.Get(ctx, sessionToken).Result()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return 0, fmt.Errorf("%s: %w", op, storage.ErrSessionNotExists)
+		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 	userID, err := strconv.Atoi(val)

@@ -2,3 +2,17 @@ version: "3"
 
 
 tasks:
+  local:
+    aliases:
+      - loc
+    cmd: go run cmd/user-server/main.go --config=./config/local.yaml
+
+  development:
+    aliases:
+      - dev
+    cmd: go run cmd/user-server/main.go --config=./config/dev.yaml
+
+  docker-image:
+    aliases:
+      - doc-img
+    cmd: 
