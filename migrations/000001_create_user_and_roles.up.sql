@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS roles(
     name text not null
 );
 
-INSERT INTO roles (name) VALUES ('dsvr'), ('admin'), ('moder'), ('user');
+INSERT INTO roles (name) VALUES ('DSVR'), ('ADMIN'), ('MODER'), ('USER');
 
 CREATE TABLE IF NOT EXISTS users(
     id SERIAL PRIMARY KEY,

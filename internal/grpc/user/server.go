@@ -22,7 +22,7 @@ type Auth interface {
 	Register(ctx context.Context, user domain.User) (userID int64, err error)
 	Logout(ctx context.Context, sessionToken string) error
 	Authenticate(ctx context.Context, sessionToken string) (userID int64, err error)
-	CheckUserRole(userId int64, roles []userv1.Role) (bool, error)
+	CheckUserRole(ctx context.Context, userId int64, roles []userv1.Role) (bool, error)
 }
 
 type serverApi struct {
@@ -83,10 +83,15 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 
 	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		if errors.Is(err, auth.ErrInvalidCredentials) {
+		switch {
+		case errors.Is(err, auth.ErrUserNotExist):
+			return nil, status.Error(codes.NotFound, "user not found")
+		case errors.Is(err, auth.ErrInvalidCredentials):
 			return nil, status.Error(codes.InvalidArgument, "invalid email or password")
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
 		}
-		return nil, status.Error(codes.Internal, err.Error())
+
 	}
 
 	return &userv1.LoginResponse{SessionToken: token}, nil
@@ -134,8 +139,24 @@ func (s serverApi) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest
 }
 
 func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleRequest) (*userv1.CheckUserRoleResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.UserId, validation.Required),
+		validation.Field(&req.Roles, validation.Required),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	hasRole, err := s.auth.CheckUserRole(ctx, req.GetUserId(), req.GetRoles())
+	if err != nil {
+		if errors.Is(err, auth.ErrUserNotExist) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &userv1.CheckUserRoleResponse{HasRole: hasRole}, nil
+
 }
 
 func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.GetUserResponse, error) {

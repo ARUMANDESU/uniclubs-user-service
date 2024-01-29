@@ -8,6 +8,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	token2 "github.com/ARUMANDESU/uniclubs-user-service/pkg/token"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
@@ -23,6 +24,7 @@ type UserStorage interface {
 	SaveUser(ctx context.Context, user *models.User) error
 	GetUserByID(ctx context.Context, userID int64) (user *models.User, err error)
 	GetUserByEmail(ctx context.Context, email string) (user *models.User, err error)
+	GetUserRoleByID(ctx context.Context, userID int64) (role string, err error)
 }
 
 type SessionStorage interface {
@@ -51,26 +53,17 @@ func (a Auth) Login(ctx context.Context, email string, password string) (token s
 
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user does not exists", slog.Attr{
-				Key:   "error",
-				Value: slog.StringValue(err.Error()),
-			})
+			log.Error("user does not exists", logger.Err(err))
 			return "", fmt.Errorf("%s: %w", op, ErrUserNotExist)
 		default:
-			log.Error("failed to get user", slog.Attr{
-				Key:   "error",
-				Value: slog.StringValue(err.Error()),
-			})
+			log.Error("failed to get user", logger.Err(err))
 			return "", fmt.Errorf("%s: %w", op, err)
 		}
 
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
-		log.Info("invalid credentials", slog.Attr{
-			Key:   "error",
-			Value: slog.StringValue(err.Error()),
-		})
+		log.Info("invalid credentials", logger.Err(err))
 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
@@ -81,10 +74,7 @@ func (a Auth) Login(ctx context.Context, email string, password string) (token s
 
 	err = a.sessionStorage.Create(ctx, token, user.ID)
 	if err != nil {
-		log.Info("can not save session", slog.Attr{
-			Key:   "error",
-			Value: slog.StringValue(err.Error()),
-		})
+		log.Info("can not save session", logger.Err(err))
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -100,10 +90,7 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 
 	modelUser.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Error("failed to generate password hash", slog.Attr{
-			Key:   "error",
-			Value: slog.StringValue(err.Error()),
-		})
+		log.Error("failed to generate password hash", logger.Err(err))
 
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
@@ -112,17 +99,11 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserExists):
-			log.Error("user already exists", slog.Attr{
-				Key:   "error",
-				Value: slog.StringValue(err.Error()),
-			})
+			log.Error("user already exists", logger.Err(err))
 			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
 
 		default:
-			log.Error("failed to save user", slog.Attr{
-				Key:   "error",
-				Value: slog.StringValue(err.Error()),
-			})
+			log.Error("failed to save user", logger.Err(err))
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
 	}
@@ -138,10 +119,7 @@ func (a Auth) Logout(ctx context.Context, sessionToken string) error {
 
 	err := a.sessionStorage.Delete(ctx, sessionToken)
 	if err != nil {
-		log.Error("failed to delete session", slog.Attr{
-			Key:   "error",
-			Value: slog.StringValue(err.Error()),
-		})
+		log.Error("failed to delete session", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -154,10 +132,7 @@ func (a Auth) Authenticate(ctx context.Context, sessionToken string) (userID int
 
 	userID, err = a.sessionStorage.Get(ctx, sessionToken)
 	if err != nil {
-		log.Error("failed to get session", slog.Attr{
-			Key:   "error",
-			Value: slog.StringValue(err.Error()),
-		})
+		log.Error("failed to get session", logger.Err(err))
 		switch {
 		case errors.Is(err, storage.ErrSessionNotExists):
 			return 0, fmt.Errorf("%s, %w", op, ErrSessionNotExists)
@@ -169,7 +144,27 @@ func (a Auth) Authenticate(ctx context.Context, sessionToken string) (userID int
 	return userID, nil
 }
 
-func (a Auth) CheckUserRole(userId int64, roles []userv1.Role) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+func (a Auth) CheckUserRole(ctx context.Context, userId int64, roles []userv1.Role) (bool, error) {
+	const op = "authService.CheckUserRole"
+	log := a.log.With(slog.String("op", op))
+
+	role, err := a.usrStorage.GetUserRoleByID(ctx, userId)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user does not exists", logger.Err(err))
+			return false, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to get role", logger.Err(err))
+			return false, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	for _, r := range roles {
+		if r.String() == role {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

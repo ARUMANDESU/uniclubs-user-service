@@ -129,3 +129,29 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 
 	return &user, nil
 }
+
+func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role string, err error) {
+	const op = "storage.postgresql.GetUserRoleByID"
+
+	stmt, err := s.DB.Prepare(`
+		SELECT r.name
+		FROM users u left join roles r 
+		ON u.role_id = r.id
+		where u.id = $1;
+	`)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	defer stmt.Close()
+
+	err = stmt.QueryRowContext(ctx, userID).Scan(&role)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+		}
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return role, nil
+}
