@@ -3,6 +3,7 @@ package app
 import (
 	grpcapp "github.com/ARUMANDESU/uniclubs-user-service/internal/app/grpc"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/postgresql"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/redis"
@@ -24,7 +25,12 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		panic(err)
 	}
 
-	authService := auth.New(log, storage, sessionStorage)
+	rmq, err := rabbitmq.New(cfg.Rabbitmq)
+	if err != nil {
+		panic(err)
+	}
+
+	authService := auth.New(log, storage, sessionStorage, rmq)
 
 	grpcApp := grpcapp.New(log, authService, cfg.GRPC.Port)
 

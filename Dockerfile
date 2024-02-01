@@ -7,6 +7,7 @@ WORKDIR /app
 # and avoid re-downloading dependencies if they haven't changed.
 COPY go.mod go.sum ./
 RUN go mod download
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 # Copy the rest of the application's source code.
 COPY . .
@@ -14,7 +15,6 @@ COPY . .
 # Build the application. This assumes you have a main package at the root of your project.
 # Adjust the path to the main package if it's located elsewhere.
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./build/user-server/main ./cmd/user-server
-RUN CGO_ENABLED=0 GOOS=linux go build -o ./build/migrator/main ./cmd/migrator
 
 # Define environment variables for PostgreSQL and Redis connections.
 # These values can be overridden when running the container.
@@ -28,5 +28,5 @@ ENV ENV="dev"\
 EXPOSE 44044
 
 # Run the application.
-CMD ["./build/migrator/main", "--postgres-url=postgres://postgres:password@postgres:5432/userdb?sslmode=disable", "--migration-path=./migrations"]
 ENTRYPOINT ["./build/user-server/main", "--config=./config/dev.yaml"]
+CMD ["migrate", "-path", "./migrations", "-database", "$DATABASE_DSN?sslmode=disable", "up"]

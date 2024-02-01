@@ -18,6 +18,11 @@ type Auth struct {
 	log            *slog.Logger
 	usrStorage     UserStorage
 	sessionStorage SessionStorage
+	amqp           Amqp
+}
+
+type Amqp interface {
+	Publish(ctx context.Context, msg any) error
 }
 
 type UserStorage interface {
@@ -40,8 +45,8 @@ var (
 	ErrSessionNotExists   = errors.New("session does not exists")
 )
 
-func New(log *slog.Logger, usrStorage UserStorage, sessionStorage SessionStorage) *Auth {
-	return &Auth{log: log, usrStorage: usrStorage, sessionStorage: sessionStorage}
+func New(log *slog.Logger, usrStorage UserStorage, sessionStorage SessionStorage, amqp Amqp) *Auth {
+	return &Auth{log: log, usrStorage: usrStorage, sessionStorage: sessionStorage, amqp: amqp}
 }
 
 func (a Auth) Login(ctx context.Context, email string, password string) (token string, err error) {
@@ -107,8 +112,26 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
 	}
-
 	// TODO: implement message broker sending user created
+
+	//todo : implement activation token generator and token storage saver
+	msg := struct {
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+		Email     string `json:"email"`
+		Token     string `json:"token"`
+	}{
+		FirstName: modelUser.FirstName,
+		LastName:  modelUser.LastName,
+		Email:     modelUser.Email,
+		Token:     "lol keek",
+	}
+
+	err = a.amqp.Publish(ctx, msg)
+	if err != nil {
+		log.Error("failed to publish", logger.Err(err))
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
 
 	return modelUser.ID, nil
 }

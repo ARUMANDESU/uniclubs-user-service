@@ -4,20 +4,39 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/rabbitmq/amqp091-go"
 	"os"
 	"time"
 )
 
 type Config struct {
-	Env         string `yaml:"env" env:"ENV" env-default:"local"`
-	GRPC        GRPC   `yaml:"grpc"`
-	DatabaseDSN string `yaml:"database_dsn" env:"DATABASE_DSN" env-required:"true"`
-	RedisURL    string `yaml:"redis_url" env:"REDIS_URL" env-required:"true"`
+	Env         string   `yaml:"env" env:"ENV" env-default:"local"`
+	GRPC        GRPC     `yaml:"grpc"`
+	Rabbitmq    Rabbitmq `yaml:"rabbitmq"`
+	DatabaseDSN string   `yaml:"database_dsn" env:"DATABASE_DSN" env-required:"true"`
+	RedisURL    string   `yaml:"redis_url" env:"REDIS_URL" env-required:"true"`
 }
 
 type GRPC struct {
 	Port    int           `yaml:"port" env:"GRPC_PORT"`
 	Timeout time.Duration `yaml:"timeout" env:"GRPC_TIMEOUT"`
+}
+
+type Rabbitmq struct {
+	User                     string `yaml:"user" env:"RABBITMQ_USER"`
+	Password                 string `yaml:"password" env:"RABBITMQ_PASSWORD"`
+	Host                     string `yaml:"host" env:"RABBITMQ_HOST"`
+	Port                     string `yaml:"port" env:"RABBITMQ_PORT"`
+	UserActivationEmailQueue Queues `yaml:"user_activation_email_queue"`
+}
+
+type Queues struct {
+	Name       string        `yaml:"name"`
+	Durable    bool          `yaml:"durable"`
+	AutoDelete bool          `yaml:"auto_delete"`
+	Exclusive  bool          `yaml:"exclusive"`
+	NoWait     bool          `yaml:"no_wait"`
+	Args       amqp091.Table `yaml:"args"`
 }
 
 func MustLoad() *Config {
