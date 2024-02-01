@@ -34,7 +34,7 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 		cfg.UserActivationEmailQueue.AutoDelete,
 		cfg.UserActivationEmailQueue.Exclusive,
 		cfg.UserActivationEmailQueue.NoWait,
-		cfg.UserActivationEmailQueue.Args,
+		nil,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to declare a queue: %w", op, err)

@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/rabbitmq/amqp091-go"
 	"os"
 	"time"
 )
@@ -27,16 +26,13 @@ type Rabbitmq struct {
 	Password                 string `yaml:"password" env:"RABBITMQ_PASSWORD"`
 	Host                     string `yaml:"host" env:"RABBITMQ_HOST"`
 	Port                     string `yaml:"port" env:"RABBITMQ_PORT"`
-	UserActivationEmailQueue Queues `yaml:"user_activation_email_queue"`
-}
-
-type Queues struct {
-	Name       string        `yaml:"name"`
-	Durable    bool          `yaml:"durable"`
-	AutoDelete bool          `yaml:"auto_delete"`
-	Exclusive  bool          `yaml:"exclusive"`
-	NoWait     bool          `yaml:"no_wait"`
-	Args       amqp091.Table `yaml:"args"`
+	UserActivationEmailQueue struct {
+		Name       string `yaml:"name" env:"UAE_QUEUE_NAME"`
+		Durable    bool   `yaml:"durable" env:"UAE_QUEUE_DURABLE"`
+		AutoDelete bool   `yaml:"auto_delete" env:"UAE_QUEUE_AUTODELETE"`
+		Exclusive  bool   `yaml:"exclusive" env:"UAE_QUEUE_EXCLUSIVE"`
+		NoWait     bool   `yaml:"no_wait" env:"UAE_QUEUE_NOWAIT"`
+	} `yaml:"user_activation_email_queue"`
 }
 
 func MustLoad() *Config {

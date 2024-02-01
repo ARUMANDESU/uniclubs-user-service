@@ -22,7 +22,16 @@ ENV ENV="dev"\
     DATABASE_DSN="postgres://postgres:password@postgres:5432/userdb" \
     REDIS_URL="redis://redis"\
     GRPC_PORT=44044\
-    GRPC_TIMEOUT=1h
+    GRPC_TIMEOUT=1h\
+    RABBITMQ_USER="dsadsi21neoU@N!D"\
+    RABBITMQ_PASSWORD="Y98213KQSNDKJASKDLJNka"\
+    RABBITMQ_HOST="localhost"\
+    RABBITMQ_PORT="5672"\
+    UAE_QUEUE_NAME="user_activation_email_queue"\
+    UAE_QUEUE_DURABLE=true\
+    UAE_QUEUE_AUTODELETE=false\
+    UAE_QUEUE_EXCLUSIVE=false\
+    UAE_QUEUE_NOWAIT=false
 
 # Expose the port your application listens on.
 EXPOSE 44044

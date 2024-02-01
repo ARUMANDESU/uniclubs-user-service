@@ -7,6 +7,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/postgresql"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/redis"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"log/slog"
 )
 
@@ -15,18 +16,23 @@ type App struct {
 }
 
 func New(log *slog.Logger, cfg *config.Config) *App {
+	const op = "App.New"
+	l := log.With(slog.String("op", op))
 
 	storage, err := postgresql.New(cfg.DatabaseDSN)
 	if err != nil {
+		l.Error("failed to connect to postgresql", logger.Err(err))
 		panic(err)
 	}
 	sessionStorage, err := redis.New(cfg.RedisURL)
 	if err != nil {
+		l.Error("failed to connect to redis", logger.Err(err))
 		panic(err)
 	}
 
 	rmq, err := rabbitmq.New(cfg.Rabbitmq)
 	if err != nil {
+		l.Error("failed to connect to rabbitmq", logger.Err(err))
 		panic(err)
 	}
 
