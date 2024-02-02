@@ -9,16 +9,19 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
-	token2 "github.com/ARUMANDESU/uniclubs-user-service/pkg/token"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/activate"
+	session "github.com/ARUMANDESU/uniclubs-user-service/pkg/token/session"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
+	"time"
 )
 
 type Auth struct {
-	log            *slog.Logger
-	usrStorage     UserStorage
-	sessionStorage SessionStorage
-	amqp           Amqp
+	log                    *slog.Logger
+	usrStorage             UserStorage
+	sessionStorage         TokenStorage
+	activationTokenStorage TokenStorage
+	amqp                   Amqp
 }
 
 type Amqp interface {
@@ -30,23 +33,37 @@ type UserStorage interface {
 	GetUserByID(ctx context.Context, userID int64) (user *models.User, err error)
 	GetUserByEmail(ctx context.Context, email string) (user *models.User, err error)
 	GetUserRoleByID(ctx context.Context, userID int64) (role string, err error)
+	ActivateUser(ctx context.Context, userID int64) error
 }
 
-type SessionStorage interface {
-	Create(ctx context.Context, sessionToken string, userID int64) error
-	Get(ctx context.Context, sessionToken string) (userID int64, err error)
+type TokenStorage interface {
+	Create(ctx context.Context, token string, userID int64, duration time.Duration) error
+	Get(ctx context.Context, token string) (userID int64, err error)
 	Delete(ctx context.Context, sessionToken string) error
 }
 
 var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserExists         = errors.New("user already exists")
-	ErrUserNotExist       = errors.New("user does not exist")
-	ErrSessionNotExists   = errors.New("session does not exists")
+	ErrInvalidCredentials       = errors.New("invalid credentials")
+	ErrUserExists               = errors.New("user already exists")
+	ErrUserNotExist             = errors.New("user does not exist")
+	ErrSessionNotExists         = errors.New("session does not exists")
+	ErrActivationTokenNotExists = errors.New("activation token does not exists")
 )
 
-func New(log *slog.Logger, usrStorage UserStorage, sessionStorage SessionStorage, amqp Amqp) *Auth {
-	return &Auth{log: log, usrStorage: usrStorage, sessionStorage: sessionStorage, amqp: amqp}
+func New(
+	log *slog.Logger,
+	usrStorage UserStorage,
+	sessionStorage TokenStorage,
+	activateTokenStorage TokenStorage,
+	amqp Amqp,
+) *Auth {
+	return &Auth{
+		log:                    log,
+		usrStorage:             usrStorage,
+		sessionStorage:         sessionStorage,
+		activationTokenStorage: activateTokenStorage,
+		amqp:                   amqp,
+	}
 }
 
 func (a Auth) Login(ctx context.Context, email string, password string) (token string, err error) {
@@ -72,12 +89,12 @@ func (a Auth) Login(ctx context.Context, email string, password string) (token s
 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	token, err = token2.GenerateSessionToken()
+	token, err = session.GenerateToken()
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	err = a.sessionStorage.Create(ctx, token, user.ID)
+	err = a.sessionStorage.Create(ctx, token, user.ID, time.Hour)
 	if err != nil {
 		log.Info("can not save session", logger.Err(err))
 		return "", fmt.Errorf("%s: %w", op, err)
@@ -114,7 +131,16 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 	}
 	// TODO: implement message broker sending user created
 
-	//todo : implement activation token generator and token storage saver
+	token, err := activate.GenerateToken()
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+	err = a.activationTokenStorage.Create(ctx, token, modelUser.ID, time.Hour*24)
+	if err != nil {
+		log.Info("can not save activate token", logger.Err(err))
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
 	msg := struct {
 		FirstName string `json:"first_name"`
 		LastName  string `json:"last_name"`
@@ -124,7 +150,7 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 		FirstName: modelUser.FirstName,
 		LastName:  modelUser.LastName,
 		Email:     modelUser.Email,
-		Token:     "lol keek",
+		Token:     token,
 	}
 
 	err = a.amqp.Publish(ctx, msg)
@@ -190,4 +216,34 @@ func (a Auth) CheckUserRole(ctx context.Context, userId int64, roles []userv1.Ro
 	}
 
 	return false, nil
+}
+
+func (a Auth) ActivateUser(ctx context.Context, token string) error {
+	const op = "authService.ActivateUser"
+	log := a.log.With(slog.String("op", op))
+
+	userID, err := a.activationTokenStorage.Get(ctx, token)
+	if err != nil {
+		log.Error("failed to get activation token", logger.Err(err))
+		switch {
+		case errors.Is(err, storage.ErrSessionNotExists):
+			return fmt.Errorf("%s, %w", op, ErrActivationTokenNotExists)
+		default:
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	err = a.usrStorage.ActivateUser(ctx, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user does not exists", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to activate user", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return nil
 }

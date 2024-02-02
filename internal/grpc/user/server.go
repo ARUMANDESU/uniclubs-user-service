@@ -25,6 +25,7 @@ type Auth interface {
 	Logout(ctx context.Context, sessionToken string) error
 	Authenticate(ctx context.Context, sessionToken string) (userID int64, err error)
 	CheckUserRole(ctx context.Context, userId int64, roles []userv1.Role) (bool, error)
+	ActivateUser(ctx context.Context, token string) error
 }
 
 type Management interface {
@@ -252,12 +253,30 @@ func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*us
 
 }
 
-func (s serverApi) ListUsers(ctx context.Context, req *userv1.ListUsersRequest) (*userv1.ListUsersResponse, error) {
-	//TODO implement me
-	panic("implement me")
+func (s serverApi) ActivateUser(ctx context.Context, req *userv1.ActivateUserRequest) (*empty.Empty, error) {
+	err := validation.Validate(&req.VerificationToken, validation.Required)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = s.auth.ActivateUser(ctx, req.GetVerificationToken())
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrActivationTokenNotExists):
+			return nil, status.Error(codes.NotFound, err.Error())
+		case errors.Is(err, auth.ErrUserNotExist):
+			return nil, status.Error(codes.NotFound, err.Error())
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+	}
+
+	return &empty.Empty{}, nil
+
 }
 
-func (s serverApi) VerifyEmail(ctx context.Context, req *userv1.VerifyEmailRequest) (*empty.Empty, error) {
+func (s serverApi) ListUsers(ctx context.Context, req *userv1.ListUsersRequest) (*userv1.ListUsersResponse, error) {
 	//TODO implement me
 	panic("implement me")
 }

@@ -1,4 +1,4 @@
-package token
+package session
 
 import (
 	"github.com/stretchr/testify/require"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestGenerateSessionToken(t *testing.T) {
-	_, err := GenerateSessionToken()
+	_, err := GenerateToken()
 	require.NoError(t, err, "must not return error")
 
 }

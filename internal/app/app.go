@@ -20,12 +20,12 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	const op = "App.New"
 	l := log.With(slog.String("op", op))
 
-	storage, err := postgresql.New(cfg.DatabaseDSN)
+	postgres, err := postgresql.New(cfg.DatabaseDSN)
 	if err != nil {
 		l.Error("failed to connect to postgresql", logger.Err(err))
 		panic(err)
 	}
-	sessionStorage, err := redis.New(cfg.RedisURL)
+	redisStrg, err := redis.New(cfg.RedisURL)
 	if err != nil {
 		l.Error("failed to connect to redis", logger.Err(err))
 		panic(err)
@@ -37,8 +37,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		panic(err)
 	}
 
-	authService := auth.New(log, storage, sessionStorage, rmq)
-	managementService := management.New(log, storage)
+	authService := auth.New(log, postgres, redisStrg, redisStrg, rmq)
+	managementService := management.New(log, postgres)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
 

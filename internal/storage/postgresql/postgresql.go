@@ -108,7 +108,7 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
-		WHERE u.email = $1;
+		WHERE u.email = $1 and u.activated;
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -137,7 +137,7 @@ func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role strin
 		SELECT r.name
 		FROM users u left join roles r 
 		ON u.role_id = r.id
-		where u.id = $1;
+		where u.id = $1 and u.activated;
 	`)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
@@ -164,7 +164,7 @@ func (s *Storage) UpdateUser(ctx context.Context, user models.User) error {
 		SET email = $2, first_name = $3, last_name = $4,
 		    phone_number = $5, barcode = $6, major = $7,
 		    group_name = $8, year = $9
-		WHERE id = $1;
+		WHERE id = $1 and activated;
 	`)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
@@ -201,7 +201,32 @@ func (s *Storage) UpdateUser(ctx context.Context, user models.User) error {
 func (s *Storage) DeleteUserByID(ctx context.Context, userID int64) error {
 	const op = "storage.postgresql.DeleteUserByID"
 
-	stmt, err := s.DB.Prepare(`DELETE FROM users WHERE id = $1;`)
+	stmt, err := s.DB.Prepare(`DELETE FROM users WHERE id = $1 and activated;`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer stmt.Close()
+
+	result, err := stmt.ExecContext(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+	}
+
+	return nil
+}
+
+func (s *Storage) ActivateUser(ctx context.Context, userID int64) error {
+	const op = "storage.postgresql.ActivateUser"
+
+	stmt, err := s.DB.Prepare(`UPDATE users SET activated = true  WHERE id = $1;`)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

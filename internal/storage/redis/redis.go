@@ -33,10 +33,10 @@ func New(redisURL string) (*Storage, error) {
 	return &Storage{client: client}, err
 }
 
-func (s Storage) Create(ctx context.Context, sessionToken string, userID int64) error {
+func (s Storage) Create(ctx context.Context, sessionToken string, userID int64, duration time.Duration) error {
 	const op = "storage.redis.Create"
 
-	err := s.client.Set(ctx, sessionToken, userID, time.Hour).Err()
+	err := s.client.Set(ctx, sessionToken, userID, duration).Err()
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

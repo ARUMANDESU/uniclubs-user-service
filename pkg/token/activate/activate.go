@@ -1,12 +1,12 @@
-package token
+package activate
 
 import (
 	"crypto/rand"
 	"encoding/hex"
 )
 
-func GenerateSessionToken() (string, error) {
-	b := make([]byte, 32)
+func GenerateToken() (string, error) {
+	b := make([]byte, 16)
 
 	// Generate cryptographically secure random bytes
 	_, err := rand.Read(b)
