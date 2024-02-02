@@ -55,12 +55,40 @@ func (m Management) GetUser(ctx context.Context, userID int64) (*domain.User, er
 
 }
 
-func (m Management) UpdateUser(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
+	const op = "Management.UpdateUser"
+	log := m.log.With(slog.String("op", op))
+
+	err := m.usrStorage.UpdateUser(ctx, *domain.UserToModelUser(*user))
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user not found", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to update user", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return nil
 }
 
 func (m Management) DeleteUser(ctx context.Context, userID int64) error {
-	//TODO implement me
-	panic("implement me")
+	const op = "Management.DeleteUser"
+	log := m.log.With(slog.String("op", op))
+
+	err := m.usrStorage.DeleteUserByID(ctx, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user not found", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to delete user", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return nil
 }

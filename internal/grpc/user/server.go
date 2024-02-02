@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Auth interface {
@@ -29,7 +30,7 @@ type Auth interface {
 type Management interface {
 	GetUser(ctx context.Context, userID int64) (user *domain.User, err error)
 	//нужно продумать ListUsers(ctx context.Context, ...) ...
-	UpdateUser(ctx context.Context /*user update entity*/) error
+	UpdateUser(ctx context.Context, user *domain.User) error
 	DeleteUser(ctx context.Context, userID int64) error
 }
 
@@ -138,13 +139,67 @@ func (s serverApi) Authenticate(ctx context.Context, req *userv1.AuthenticateReq
 }
 
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.UserId, validation.Required),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	user, err := s.management.GetUser(ctx, req.GetUserId())
+	if err != nil {
+		if errors.Is(err, management.ErrUserNotExist) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	paths := req.GetUpdateMask().GetPaths()
+	for _, path := range paths {
+		switch path {
+		case "first_name":
+			user.FirstName = req.GetFirstName()
+		case "last_name":
+			user.LastName = req.GetLastName()
+		case "major":
+			user.Major = req.GetMajor()
+		case "group_name":
+			user.GroupName = req.GetGroupName()
+		case "year":
+			user.Year = int(req.GetYear())
+		}
+	}
+
+	err = s.management.UpdateUser(ctx, user)
+	if err != nil {
+		if errors.Is(err, management.ErrUserNotExist) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &userv1.UpdateUserResponse{UserId: user.ID}, nil
+
 }
 
 func (s serverApi) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.UserId, validation.Required),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = s.management.DeleteUser(ctx, req.GetUserId())
+	if err != nil {
+		if errors.Is(err, management.ErrUserNotExist) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &empty.Empty{}, nil
+
 }
 
 func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleRequest) (*userv1.CheckUserRoleResponse, error) {
@@ -191,7 +246,7 @@ func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*us
 		Major:     user.Major,
 		GroupName: user.GroupName,
 		Year:      int32(user.Year),
-		CreatedAt: user.CreatedAt.String(),
+		CreatedAt: timestamppb.New(user.CreatedAt),
 		Role:      user.MapRoleStringToEnum(),
 	}, nil
 

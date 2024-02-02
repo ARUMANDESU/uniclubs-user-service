@@ -157,11 +157,68 @@ func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role strin
 }
 
 func (s *Storage) UpdateUser(ctx context.Context, user models.User) error {
-	//TODO implement me
-	panic("implement me")
+	const op = "storage.postgresql.UpdateUser"
+
+	stmt, err := s.DB.Prepare(`
+		UPDATE users
+		SET email = $2, first_name = $3, last_name = $4,
+		    phone_number = $5, barcode = $6, major = $7,
+		    group_name = $8, year = $9
+		WHERE id = $1;
+	`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer stmt.Close()
+
+	args := []any{
+		user.ID,
+		user.Email,
+		user.FirstName,
+		user.LastName,
+		user.PhoneNumber,
+		user.Barcode,
+		user.Major,
+		user.GroupName,
+		user.Year,
+	}
+	result, err := stmt.ExecContext(ctx, args...)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+	}
+
+	return nil
 }
 
 func (s *Storage) DeleteUserByID(ctx context.Context, userID int64) error {
-	//TODO implement me
-	panic("implement me")
+	const op = "storage.postgresql.DeleteUserByID"
+
+	stmt, err := s.DB.Prepare(`DELETE FROM users WHERE id = $1;`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer stmt.Close()
+
+	result, err := stmt.ExecContext(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+	}
+
+	return nil
 }
