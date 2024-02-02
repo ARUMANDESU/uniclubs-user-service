@@ -5,6 +5,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/management"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/postgresql"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/redis"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
@@ -37,8 +38,9 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	}
 
 	authService := auth.New(log, storage, sessionStorage, rmq)
+	managementService := management.New(log, storage)
 
-	grpcApp := grpcapp.New(log, authService, cfg.GRPC.Port)
+	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
 
 	return &App{GRPCSrv: grpcApp}
 }

@@ -6,6 +6,7 @@ import (
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/management"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -25,13 +26,21 @@ type Auth interface {
 	CheckUserRole(ctx context.Context, userId int64, roles []userv1.Role) (bool, error)
 }
 
-type serverApi struct {
-	userv1.UnimplementedUserServer
-	auth Auth
+type Management interface {
+	GetUser(ctx context.Context, userID int64) (user *domain.User, err error)
+	//нужно продумать ListUsers(ctx context.Context, ...) ...
+	UpdateUser(ctx context.Context /*user update entity*/) error
+	DeleteUser(ctx context.Context, userID int64) error
 }
 
-func Register(gRPC *grpc.Server, auth Auth) {
-	userv1.RegisterUserServer(gRPC, &serverApi{auth: auth})
+type serverApi struct {
+	userv1.UnimplementedUserServer
+	auth       Auth
+	management Management
+}
+
+func Register(gRPC *grpc.Server, auth Auth, management Management) {
+	userv1.RegisterUserServer(gRPC, &serverApi{auth: auth, management: management})
 }
 
 func (s serverApi) Register(ctx context.Context, req *userv1.RegisterRequest) (*userv1.RegisterResponse, error) {
@@ -160,8 +169,32 @@ func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleR
 }
 
 func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.GetUserResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validation.Validate(&req.UserId, validation.Required)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	user, err := s.management.GetUser(ctx, req.GetUserId())
+	if err != nil {
+		if errors.Is(err, management.ErrUserNotExist) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &userv1.GetUserResponse{
+		UserId:    user.ID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Barcode:   user.Barcode,
+		Major:     user.Major,
+		GroupName: user.GroupName,
+		Year:      int32(user.Year),
+		CreatedAt: user.CreatedAt.String(),
+		Role:      user.MapRoleStringToEnum(),
+	}, nil
+
 }
 
 func (s serverApi) ListUsers(ctx context.Context, req *userv1.ListUsersRequest) (*userv1.ListUsersResponse, error) {

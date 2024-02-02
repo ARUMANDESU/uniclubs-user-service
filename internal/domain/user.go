@@ -1,6 +1,7 @@
 package domain
 
 import (
+	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
 	"time"
 )
@@ -18,6 +19,23 @@ type User struct {
 	Major       string    `json:"major"`
 	GroupName   string    `json:"group_name"`
 	Year        int       `json:"year"`
+}
+
+func (u User) MapRoleStringToEnum() userv1.Role {
+	switch u.Role {
+	case "GUEST":
+		return userv1.Role_GUEST
+	case "USER":
+		return userv1.Role_USER
+	case "MODER":
+		return userv1.Role_MODER
+	case "ADMIN":
+		return userv1.Role_ADMIN
+	case "DSVR":
+		return userv1.Role_DSVR
+	default:
+		return userv1.Role_GUEST // or any default value
+	}
 }
 
 func UserToModelUser(dUser User) *models.User {

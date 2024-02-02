@@ -1,0 +1,66 @@
+package management
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
+	"log/slog"
+)
+
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUserNotExist       = errors.New("user does not exist")
+)
+
+type Management struct {
+	log        *slog.Logger
+	usrStorage UserStorage
+}
+
+type UserStorage interface {
+	GetUserByID(ctx context.Context, userID int64) (user *models.User, err error)
+	UpdateUser(ctx context.Context, user models.User) error
+	DeleteUserByID(ctx context.Context, userID int64) error
+}
+
+func New(log *slog.Logger, storage UserStorage) *Management {
+	return &Management{
+		log:        log,
+		usrStorage: storage,
+	}
+}
+
+func (m Management) GetUser(ctx context.Context, userID int64) (*domain.User, error) {
+	const op = "Management.GetUser"
+	log := m.log.With(slog.String("op", op))
+
+	user, err := m.usrStorage.GetUserByID(ctx, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user does not exists", logger.Err(err))
+			return nil, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+	}
+
+	return domain.ModelUserToDomainUser(*user), nil
+
+}
+
+func (m Management) UpdateUser(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m Management) DeleteUser(ctx context.Context, userID int64) error {
+	//TODO implement me
+	panic("implement me")
+}

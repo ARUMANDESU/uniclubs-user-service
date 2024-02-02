@@ -155,3 +155,13 @@ func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role strin
 
 	return role, nil
 }
+
+func (s *Storage) UpdateUser(ctx context.Context, user models.User) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *Storage) DeleteUserByID(ctx context.Context, userID int64) error {
+	//TODO implement me
+	panic("implement me")
+}
