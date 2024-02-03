@@ -233,7 +233,7 @@ func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleR
 }
 
 func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.GetUserResponse, error) {
-	err := validation.Validate(&req.UserId, validation.Required)
+	err := validation.Validate(&req.UserId, validation.Required, validation.Min(1))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

@@ -245,5 +245,10 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 		}
 	}
 
+	err = a.activationTokenStorage.Delete(ctx, token)
+	if err != nil {
+		log.Error("failed to delete token", logger.Err(err))
+	}
+
 	return nil
 }
