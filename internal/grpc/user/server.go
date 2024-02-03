@@ -16,6 +16,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var (
+	ErrUserNotFound            = errors.New("user not found")
+	ErrUserAlreadyExists       = errors.New("user already exists")
+	ErrActivationTokenNotFound = errors.New("activation token not found")
+	ErrSessionNotFound         = errors.New("session not found")
+	ErrInternal                = errors.New("internal error")
+)
+
 type Auth interface {
 	Login(ctx context.Context,
 		email string,
@@ -75,9 +83,9 @@ func (s serverApi) Register(ctx context.Context, req *userv1.RegisterRequest) (*
 	userID, err := s.auth.Register(ctx, user)
 	if err != nil {
 		if errors.Is(err, auth.ErrUserExists) {
-			return nil, status.Error(codes.AlreadyExists, "user already exists")
+			return nil, status.Error(codes.AlreadyExists, ErrUserAlreadyExists.Error())
 		}
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, status.Error(codes.Internal, ErrInternal.Error())
 	}
 
 	return &userv1.RegisterResponse{UserId: userID}, nil
@@ -96,7 +104,7 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrUserNotExist):
-			return nil, status.Error(codes.NotFound, "user not found")
+			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
 		case errors.Is(err, auth.ErrInvalidCredentials):
 			return nil, status.Error(codes.InvalidArgument, "invalid email or password")
 		default:
@@ -131,7 +139,7 @@ func (s serverApi) Authenticate(ctx context.Context, req *userv1.AuthenticateReq
 	userID, err := s.auth.Authenticate(ctx, req.GetSessionToken())
 	if err != nil {
 		if errors.Is(err, auth.ErrSessionNotExists) {
-			return nil, status.Error(codes.NotFound, err.Error())
+			return nil, status.Error(codes.NotFound, ErrSessionNotFound.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -150,7 +158,7 @@ func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest
 	user, err := s.management.GetUser(ctx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, management.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, "user not found")
+			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -174,7 +182,7 @@ func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest
 	err = s.management.UpdateUser(ctx, user)
 	if err != nil {
 		if errors.Is(err, management.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, "user not found")
+			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -194,7 +202,7 @@ func (s serverApi) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest
 	err = s.management.DeleteUser(ctx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, management.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, "user not found")
+			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -215,7 +223,7 @@ func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleR
 	hasRole, err := s.auth.CheckUserRole(ctx, req.GetUserId(), req.GetRoles())
 	if err != nil {
 		if errors.Is(err, auth.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, "user not found")
+			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -233,7 +241,7 @@ func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*us
 	user, err := s.management.GetUser(ctx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, management.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, "user not found")
+			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -254,7 +262,7 @@ func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*us
 }
 
 func (s serverApi) ActivateUser(ctx context.Context, req *userv1.ActivateUserRequest) (*empty.Empty, error) {
-	err := validation.Validate(&req.VerificationToken, validation.Required)
+	err := validation.Validate(&req.VerificationToken, validation.Required, validation.Length(31, 33))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -263,9 +271,9 @@ func (s serverApi) ActivateUser(ctx context.Context, req *userv1.ActivateUserReq
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrActivationTokenNotExists):
-			return nil, status.Error(codes.NotFound, err.Error())
+			return nil, status.Error(codes.NotFound, ErrActivationTokenNotFound.Error())
 		case errors.Is(err, auth.ErrUserNotExist):
-			return nil, status.Error(codes.NotFound, err.Error())
+			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
 		default:
 			return nil, status.Error(codes.Internal, err.Error())
 		}
