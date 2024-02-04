@@ -3,6 +3,7 @@ package domain
 import (
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
@@ -71,4 +72,27 @@ func ModelUserToDomainUser(mUser models.User) *User {
 		GroupName:   mUser.GroupName,
 		Year:        mUser.Year,
 	}
+}
+
+func mapUserToUserObject(user *User) *userv1.UserObject {
+	return &userv1.UserObject{
+		UserId:    user.ID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Barcode:   user.Barcode,
+		Major:     user.Major,
+		GroupName: user.GroupName,
+		Year:      int32(user.Year),
+		CreatedAt: timestamppb.New(user.CreatedAt),
+		Role:      user.MapRoleStringToEnum(),
+	}
+}
+
+func MapUserArrToUserObjectArr(users []*User) []*userv1.UserObject {
+	userObjects := make([]*userv1.UserObject, len(users))
+	for i, user := range users {
+		userObjects[i] = mapUserToUserObject(user)
+	}
+	return userObjects
 }

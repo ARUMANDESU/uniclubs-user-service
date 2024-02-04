@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"time"
 )
 
 type Storage struct {
@@ -90,7 +92,12 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, 
 	result := stmt.QueryRowContext(ctx, userID)
 	user := models.User{}
 
-	err = result.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.FirstName, &user.LastName, &user.CreatedAt, &user.Barcode, &user.Major, &user.GroupName, &user.Year, &user.Role)
+	err = result.Scan(
+		&user.ID, &user.Email, &user.PasswordHash,
+		&user.FirstName, &user.LastName, &user.CreatedAt,
+		&user.Barcode, &user.Major, &user.GroupName,
+		&user.Year, &user.Role,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
@@ -119,7 +126,12 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 	result := stmt.QueryRowContext(ctx, email)
 	user := models.User{}
 
-	err = result.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.FirstName, &user.LastName, &user.CreatedAt, &user.Barcode, &user.Major, &user.GroupName, &user.Year, &user.Role)
+	err = result.Scan(
+		&user.ID, &user.Email, &user.PasswordHash,
+		&user.FirstName, &user.LastName, &user.CreatedAt,
+		&user.Barcode, &user.Major, &user.GroupName,
+		&user.Year, &user.Role,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
@@ -246,4 +258,66 @@ func (s *Storage) ActivateUser(ctx context.Context, userID int64) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error) {
+	const op = "storage.postgresql.GetAll"
+
+	stmt, err := s.DB.Prepare(`
+		SELECT count(*) OVER(), u.id,
+		       u.email, u.first_name, u.last_name,
+		       u.created_at, u.barcode, u.major,
+		       u.group_name, u.year, r.name as role
+		FROM users u LEFT JOIN roles r
+		ON  u.role_id = r.id
+		WHERE 
+			(STRPOS(LOWER(email), LOWER($1)) > 0 OR $1 = '') OR
+			(STRPOS(LOWER(first_name), LOWER($1)) > 0 OR $1 = '') OR
+			(STRPOS(LOWER(last_name), LOWER($1)) > 0 OR $1 = '')
+		ORDER BY id ASC
+        LIMIT $2 OFFSET $3;
+	`)
+	if err != nil {
+		return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
+	}
+	defer stmt.Close()
+
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	args := []any{query, filters.Limit(), filters.Offset()}
+
+	rows, err := stmt.QueryContext(ctx, args...)
+	if err != nil {
+		return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	defer rows.Close()
+
+	var totalRecords int32
+	users := []*domain.User{}
+
+	for rows.Next() {
+		var user domain.User
+
+		err := rows.Scan(
+			&totalRecords, &user.ID, &user.Email,
+			&user.FirstName, &user.LastName, &user.CreatedAt,
+			&user.Barcode, &user.Major, &user.GroupName,
+			&user.Year, &user.Role,
+		)
+		if err != nil {
+			return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
+		}
+
+		users = append(users, &user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	metadata := domain.CalculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
+	return users, metadata, nil
 }

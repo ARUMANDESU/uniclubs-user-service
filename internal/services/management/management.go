@@ -25,6 +25,7 @@ type UserStorage interface {
 	GetUserByID(ctx context.Context, userID int64) (user *models.User, err error)
 	UpdateUser(ctx context.Context, user models.User) error
 	DeleteUserByID(ctx context.Context, userID int64) error
+	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
 }
 
 func New(log *slog.Logger, storage UserStorage) *Management {
@@ -91,4 +92,18 @@ func (m Management) DeleteUser(ctx context.Context, userID int64) error {
 	}
 
 	return nil
+}
+
+func (m Management) SearchUsers(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error) {
+	const op = "Management.SearchUsers"
+	log := m.log.With(slog.String("op", op))
+
+	users, metadata, err := m.usrStorage.GetAll(ctx, query, filters)
+	if err != nil {
+		log.Error("failed to get users", logger.Err(err))
+		return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return users, metadata, nil
+
 }

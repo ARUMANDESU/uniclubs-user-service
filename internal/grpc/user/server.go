@@ -32,13 +32,21 @@ type Auth interface {
 	Register(ctx context.Context, user domain.User) (userID int64, err error)
 	Logout(ctx context.Context, sessionToken string) error
 	Authenticate(ctx context.Context, sessionToken string) (userID int64, err error)
-	CheckUserRole(ctx context.Context, userId int64, roles []userv1.Role) (bool, error)
+	CheckUserRole(
+		ctx context.Context,
+		userId int64,
+		roles []userv1.Role,
+	) (bool, error)
 	ActivateUser(ctx context.Context, token string) error
 }
 
 type Management interface {
 	GetUser(ctx context.Context, userID int64) (user *domain.User, err error)
-	//нужно продумать ListUsers(ctx context.Context, ...) ...
+	SearchUsers(
+		ctx context.Context,
+		query string,
+		filters domain.Filters,
+	) (users []*domain.User, metadata domain.Metadata, err error)
 	UpdateUser(ctx context.Context, user *domain.User) error
 	DeleteUser(ctx context.Context, userID int64) error
 }
@@ -150,6 +158,7 @@ func (s serverApi) Authenticate(ctx context.Context, req *userv1.AuthenticateReq
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.UserId, validation.Required),
+		validation.Field(&req.Year, validation.Min(1)),
 	)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -284,9 +293,36 @@ func (s serverApi) ActivateUser(ctx context.Context, req *userv1.ActivateUserReq
 
 }
 
-func (s serverApi) ListUsers(ctx context.Context, req *userv1.ListUsersRequest) (*userv1.ListUsersResponse, error) {
-	//TODO implement me
-	panic("implement me")
+func (s serverApi) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.Query, validation.Required),
+		validation.Field(&req.PageNumber, validation.Required, validation.Min(1)),
+		validation.Field(&req.PageSize, validation.Required, validation.Min(1)),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	f := domain.Filters{
+		Page:     req.GetPageNumber(),
+		PageSize: req.GetPageSize(),
+	}
+
+	users, metadata, err := s.management.SearchUsers(ctx, req.GetQuery(), f)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrInternal.Error())
+	}
+
+	return &userv1.SearchUsersResponse{
+		Users: domain.MapUserArrToUserObjectArr(users),
+		Metadata: &userv1.SearchUsersMetadata{
+			CurrentPage:  metadata.CurrentPage,
+			PageSize:     metadata.PageSize,
+			FirstPage:    metadata.FirstPage,
+			LastPage:     metadata.LastPage,
+			TotalRecords: metadata.TotalRecords,
+		},
+	}, nil
 }
 
 func (s serverApi) UnlockAccount(ctx context.Context, req *userv1.UnlockAccountRequest) (*empty.Empty, error) {
