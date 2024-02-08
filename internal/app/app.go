@@ -1,7 +1,9 @@
 package app
 
 import (
+	"context"
 	grpcapp "github.com/ARUMANDESU/uniclubs-user-service/internal/app/grpc"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
@@ -37,8 +39,14 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		panic(err)
 	}
 
+	imageClient, err := image.New(context.Background(), log, cfg.Clients)
+	if err != nil {
+		l.Error("failed to connect to imagestorage service", logger.Err(err))
+		panic(err)
+	}
+
 	authService := auth.New(log, postgres, redisStrg, redisStrg, rmq)
-	managementService := management.New(log, postgres)
+	managementService := management.New(log, postgres, imageClient)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
 

@@ -22,6 +22,7 @@ type Management interface {
 	) (users []*domain.User, metadata domain.Metadata, err error)
 	UpdateUser(ctx context.Context, user *domain.User) error
 	DeleteUser(ctx context.Context, userID int64) error
+	UpdateAvatar(ctx context.Context, userID int64, image []byte) error
 }
 
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {
@@ -108,6 +109,7 @@ func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*us
 		Email:     user.Email,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
+		AvatarUrl: user.AvatarURL,
 		Barcode:   user.Barcode,
 		Major:     user.Major,
 		GroupName: user.GroupName,
@@ -120,7 +122,6 @@ func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*us
 
 func (s serverApi) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
 	err := validation.ValidateStruct(req,
-		validation.Field(&req.Query, validation.Required),
 		validation.Field(&req.PageNumber, validation.Required, validation.Min(1)),
 		validation.Field(&req.PageSize, validation.Required, validation.Min(1)),
 	)
@@ -158,4 +159,21 @@ func (s serverApi) UnlockAccount(ctx context.Context, req *userv1.UnlockAccountR
 func (s serverApi) LockAccount(ctx context.Context, req *userv1.LockAccountRequest) (*empty.Empty, error) {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequest) (*empty.Empty, error) {
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.Image, validation.Required),
+		validation.Field(&req.UserId, validation.Required, validation.Min(1)),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = s.management.UpdateAvatar(ctx, req.GetUserId(), req.GetImage())
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrInternal.Error())
+	}
+
+	return &empty.Empty{}, nil
 }

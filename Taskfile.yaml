@@ -1,5 +1,7 @@
 version: "3"
 
+vars:
+  DATABASE_DSN: "postgresql://postgres:admin@localhost:5432/user_service"
 
 tasks:
   local:
@@ -16,3 +18,9 @@ tasks:
     aliases:
       - doc-img
     cmd: docker build -t arumandesu/user-service -t arumandesu/user-service:0.0.5 . && docker push arumandesu/user-service -a
+
+  migrate-up:
+    cmd: migrate -path ./migrations -database $DATABASE_DSN up
+
+  migrate-down:
+    cmd: migrate -path ./migrations -database $DATABASE_DSN down

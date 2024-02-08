@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	imagev1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/filestorage"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
@@ -17,21 +19,23 @@ var (
 )
 
 type Management struct {
-	log        *slog.Logger
-	usrStorage UserStorage
+	log         *slog.Logger
+	usrStorage  UserStorage
+	imageClient *image.Client
 }
 
 type UserStorage interface {
 	GetUserByID(ctx context.Context, userID int64) (user *models.User, err error)
-	UpdateUser(ctx context.Context, user models.User) error
+	UpdateUser(ctx context.Context, user *models.User) error
 	DeleteUserByID(ctx context.Context, userID int64) error
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
 }
 
-func New(log *slog.Logger, storage UserStorage) *Management {
+func New(log *slog.Logger, storage UserStorage, client *image.Client) *Management {
 	return &Management{
-		log:        log,
-		usrStorage: storage,
+		log:         log,
+		usrStorage:  storage,
+		imageClient: client,
 	}
 }
 
@@ -60,7 +64,7 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 	const op = "Management.UpdateUser"
 	log := m.log.With(slog.String("op", op))
 
-	err := m.usrStorage.UpdateUser(ctx, *domain.UserToModelUser(*user))
+	err := m.usrStorage.UpdateUser(ctx, domain.UserToModelUser(*user))
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
@@ -106,4 +110,42 @@ func (m Management) SearchUsers(ctx context.Context, query string, filters domai
 
 	return users, metadata, nil
 
+}
+
+func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte) error {
+	const op = "Management.UpdateAvatar"
+	log := m.log.With(slog.String("op", op))
+
+	user, err := m.usrStorage.GetUserByID(ctx, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user does not exists", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	res, err := m.imageClient.UploadImage(ctx, &imagev1.UploadImageRequest{Image: image, Filename: user.Barcode})
+	if err != nil {
+		log.Error("failed to upload avatar", logger.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	user.AvatarURL = res.GetImageUrl()
+
+	err = m.usrStorage.UpdateUser(ctx, user)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user not found", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to update user avatar url", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return nil
 }

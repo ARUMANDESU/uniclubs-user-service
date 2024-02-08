@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Env         string   `yaml:"env" env:"ENV" env-default:"local"`
-	GRPC        GRPC     `yaml:"grpc"`
-	Rabbitmq    Rabbitmq `yaml:"rabbitmq"`
-	DatabaseDSN string   `yaml:"database_dsn" env:"DATABASE_DSN" env-required:"true"`
-	RedisURL    string   `yaml:"redis_url" env:"REDIS_URL" env-required:"true"`
+	Env         string        `yaml:"env" env:"ENV" env-default:"local"`
+	GRPC        GRPC          `yaml:"grpc"`
+	Rabbitmq    Rabbitmq      `yaml:"rabbitmq"`
+	DatabaseDSN string        `yaml:"database_dsn" env:"DATABASE_DSN" env-required:"true"`
+	RedisURL    string        `yaml:"redis_url" env:"REDIS_URL" env-required:"true"`
+	Clients     ClientsConfig `yaml:"clients"`
 }
 
 type GRPC struct {
@@ -33,6 +34,14 @@ type Rabbitmq struct {
 		Exclusive  bool   `yaml:"exclusive" env:"UAE_QUEUE_EXCLUSIVE"`
 		NoWait     bool   `yaml:"no_wait" env:"UAE_QUEUE_NOWAIT"`
 	} `yaml:"user_activation_email_queue"`
+}
+
+type ClientsConfig struct {
+	Image struct {
+		Address      string        `yaml:"address" env:"IMAGE_SERVICE_ADDRESS"`
+		Timeout      time.Duration `yaml:"timeout" env:"IMAGE_SERVICE_TIMEOUT"`
+		RetriesCount int           `yaml:"retries_count" env:"IMAGE_SERVICE_RETRIES_COUNT"`
+	} `yaml:"image"`
 }
 
 func MustLoad() *Config {

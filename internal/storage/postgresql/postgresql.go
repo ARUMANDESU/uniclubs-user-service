@@ -78,7 +78,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, 
 	const op = "storage.postgresql.GetUserByEmail"
 
 	stmt, err := s.DB.Prepare(`
-		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
+		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.avatar_url, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
 		WHERE u.id = $1;
@@ -94,9 +94,9 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, 
 
 	err = result.Scan(
 		&user.ID, &user.Email, &user.PasswordHash,
-		&user.FirstName, &user.LastName, &user.CreatedAt,
-		&user.Barcode, &user.Major, &user.GroupName,
-		&user.Year, &user.Role,
+		&user.FirstName, &user.LastName, &user.AvatarURL,
+		&user.CreatedAt, &user.Barcode, &user.Major,
+		&user.GroupName, &user.Year, &user.Role,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -112,7 +112,7 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 	const op = "storage.postgresql.GetUserByEmail"
 
 	stmt, err := s.DB.Prepare(`
-		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
+		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.avatar_url, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
 		WHERE u.email = $1 and u.activated;
@@ -128,9 +128,9 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 
 	err = result.Scan(
 		&user.ID, &user.Email, &user.PasswordHash,
-		&user.FirstName, &user.LastName, &user.CreatedAt,
-		&user.Barcode, &user.Major, &user.GroupName,
-		&user.Year, &user.Role,
+		&user.FirstName, &user.LastName, &user.AvatarURL,
+		&user.CreatedAt, &user.Barcode, &user.Major,
+		&user.GroupName, &user.Year, &user.Role,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -168,14 +168,14 @@ func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role strin
 	return role, nil
 }
 
-func (s *Storage) UpdateUser(ctx context.Context, user models.User) error {
+func (s *Storage) UpdateUser(ctx context.Context, user *models.User) error {
 	const op = "storage.postgresql.UpdateUser"
 
 	stmt, err := s.DB.Prepare(`
 		UPDATE users
 		SET email = $2, first_name = $3, last_name = $4,
 		    phone_number = $5, barcode = $6, major = $7,
-		    group_name = $8, year = $9
+		    group_name = $8, year = $9, avatar_url = $10
 		WHERE id = $1 and activated;
 	`)
 	if err != nil {
@@ -193,6 +193,7 @@ func (s *Storage) UpdateUser(ctx context.Context, user models.User) error {
 		user.Major,
 		user.GroupName,
 		user.Year,
+		user.AvatarURL,
 	}
 	result, err := stmt.ExecContext(ctx, args...)
 	if err != nil {
@@ -265,7 +266,7 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 
 	stmt, err := s.DB.Prepare(`
 		SELECT count(*) OVER(), u.id,
-		       u.email, u.first_name, u.last_name,
+		       u.email, u.first_name, u.last_name, u.avatar_url,
 		       u.created_at, u.barcode, u.major,
 		       u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
@@ -302,9 +303,9 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 
 		err := rows.Scan(
 			&totalRecords, &user.ID, &user.Email,
-			&user.FirstName, &user.LastName, &user.CreatedAt,
-			&user.Barcode, &user.Major, &user.GroupName,
-			&user.Year, &user.Role,
+			&user.FirstName, &user.LastName, &user.AvatarURL,
+			&user.CreatedAt, &user.Barcode, &user.Major,
+			&user.GroupName, &user.Year, &user.Role,
 		)
 		if err != nil {
 			return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)

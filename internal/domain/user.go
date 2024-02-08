@@ -11,6 +11,7 @@ type User struct {
 	ID          int64     `json:"id"`
 	FirstName   string    `json:"first_name"`
 	LastName    string    `json:"last_name"`
+	AvatarURL   string    `json:"avatar_url"`
 	Email       string    `json:"email"`
 	Password    string    `json:"-"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -44,6 +45,7 @@ func UserToModelUser(dUser User) *models.User {
 		ID:           dUser.ID,
 		FirstName:    dUser.FirstName,
 		LastName:     dUser.LastName,
+		AvatarURL:    dUser.AvatarURL,
 		Email:        dUser.Email,
 		PasswordHash: nil,   // Assume that we don't have the password hash in domain.User
 		Activated:    false, // or determine activation status if possible
@@ -62,6 +64,7 @@ func ModelUserToDomainUser(mUser models.User) *User {
 		ID:          mUser.ID,
 		FirstName:   mUser.FirstName,
 		LastName:    mUser.LastName,
+		AvatarURL:   mUser.AvatarURL,
 		Email:       mUser.Email,
 		Password:    "", // Assume that we don't convert the password hash back to a password
 		CreatedAt:   mUser.CreatedAt,
@@ -80,6 +83,7 @@ func mapUserToUserObject(user *User) *userv1.UserObject {
 		Email:     user.Email,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
+		AvatarUrl: user.AvatarURL,
 		Barcode:   user.Barcode,
 		Major:     user.Major,
 		GroupName: user.GroupName,
