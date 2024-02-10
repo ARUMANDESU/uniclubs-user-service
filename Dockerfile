@@ -27,12 +27,11 @@ ENV ENV="dev"\
     RABBITMQ_PASSWORD="Y98213KQSNDKJASKDLJNka"\
     RABBITMQ_HOST="localhost"\
     RABBITMQ_PORT="5672"\
-    UAE_QUEUE_NAME="user_activation_email_queue"\
-    UAE_QUEUE_DURABLE=true\
-    UAE_QUEUE_AUTODELETE=false\
-    UAE_QUEUE_EXCLUSIVE=false\
-    UAE_QUEUE_NOWAIT=false
-
+    RABBITMQ_EXCHANGE_NAME="user_events"\
+    RABBITMQ_QUEUE_NAME="user"\
+    IMAGE_SERVICE_ADDRESS="localhost:44042"\
+    IMAGE_SERVICE_TIMEOUT="3s"\
+    IMAGE_SERVICE_RETRIES_COUNT=3
 # Expose the port your application listens on.
 EXPOSE 44044
 

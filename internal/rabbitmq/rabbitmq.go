@@ -11,6 +11,7 @@ import (
 type Rabbitmq struct {
 	conn *amqp091.Connection
 	ch   *amqp091.Channel
+	cfg  config.Rabbitmq
 	q    *amqp091.Queue
 }
 
@@ -28,26 +29,48 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 		return nil, fmt.Errorf("%s: failed to open a channel: %w", op, err)
 	}
 
-	q, err := ch.QueueDeclare(
-		cfg.UserActivationEmailQueue.Name,
-		cfg.UserActivationEmailQueue.Durable,
-		cfg.UserActivationEmailQueue.AutoDelete,
-		cfg.UserActivationEmailQueue.Exclusive,
-		cfg.UserActivationEmailQueue.NoWait,
+	err = ch.ExchangeDeclare(
+		cfg.ExchangeName,
+		"topic",
+		true,
+		false,
+		false,
+		false,
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("%s: failed to declare a queue: %w", op, err)
+		return nil, fmt.Errorf("%s: failed to declare exchange: %w", op, err)
+	}
+
+	q, err := ch.QueueDeclare(
+		cfg.QueueName,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+
+	err = ch.QueueBind(
+		cfg.QueueName,
+		"user.*",
+		cfg.ExchangeName,
+		false,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to bind exchange to queue: %w", op, err)
 	}
 
 	return &Rabbitmq{
 		conn: conn,
 		ch:   ch,
 		q:    &q,
+		cfg:  cfg,
 	}, nil
 }
 
-func (r *Rabbitmq) Publish(ctx context.Context, msg any) error {
+func (r *Rabbitmq) Publish(ctx context.Context, routingKey string, msg any) error {
 	const op = "Rabbitmq.Publish"
 
 	bytes, err := json.Marshal(msg)
@@ -55,14 +78,15 @@ func (r *Rabbitmq) Publish(ctx context.Context, msg any) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	err = r.ch.PublishWithContext(ctx,
-		"",
-		r.q.Name,
+	err = r.ch.PublishWithContext(
+		ctx,
+		r.cfg.ExchangeName,
+		routingKey,
 		false,
 		false,
 		amqp091.Publishing{
 			DeliveryMode: amqp091.Persistent,
-			ContentType:  "text/plain",
+			ContentType:  "application/json",
 			Body:         bytes,
 		})
 	if err != nil {

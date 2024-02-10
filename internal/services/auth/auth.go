@@ -25,7 +25,7 @@ type Auth struct {
 }
 
 type Amqp interface {
-	Publish(ctx context.Context, msg any) error
+	Publish(ctx context.Context, routingKey string, msg any) error
 }
 
 type UserStorage interface {
@@ -153,7 +153,7 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 		Token:     token,
 	}
 
-	err = a.amqp.Publish(ctx, msg)
+	err = a.amqp.Publish(ctx, "user.registered", msg)
 	if err != nil {
 		log.Error("failed to publish", logger.Err(err))
 		return 0, fmt.Errorf("%s: %w", op, err)

@@ -23,17 +23,12 @@ type GRPC struct {
 }
 
 type Rabbitmq struct {
-	User                     string `yaml:"user" env:"RABBITMQ_USER"`
-	Password                 string `yaml:"password" env:"RABBITMQ_PASSWORD"`
-	Host                     string `yaml:"host" env:"RABBITMQ_HOST"`
-	Port                     string `yaml:"port" env:"RABBITMQ_PORT"`
-	UserActivationEmailQueue struct {
-		Name       string `yaml:"name" env:"UAE_QUEUE_NAME"`
-		Durable    bool   `yaml:"durable" env:"UAE_QUEUE_DURABLE"`
-		AutoDelete bool   `yaml:"auto_delete" env:"UAE_QUEUE_AUTODELETE"`
-		Exclusive  bool   `yaml:"exclusive" env:"UAE_QUEUE_EXCLUSIVE"`
-		NoWait     bool   `yaml:"no_wait" env:"UAE_QUEUE_NOWAIT"`
-	} `yaml:"user_activation_email_queue"`
+	User         string `yaml:"user" env:"RABBITMQ_USER"`
+	Password     string `yaml:"password" env:"RABBITMQ_PASSWORD"`
+	Host         string `yaml:"host" env:"RABBITMQ_HOST"`
+	Port         string `yaml:"port" env:"RABBITMQ_PORT"`
+	ExchangeName string `yaml:"exchange_name" env:"RABBITMQ_EXCHANGE_NAME"`
+	QueueName    string `yaml:"queue_name" env:"RABBITMQ_QUEUE_NAME"`
 }
 
 type ClientsConfig struct {
