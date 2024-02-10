@@ -129,7 +129,6 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 			return 0, fmt.Errorf("%s: %w", op, err)
 		}
 	}
-	// TODO: implement message broker sending user created
 
 	token, err := activate.GenerateToken()
 	if err != nil {
@@ -153,7 +152,7 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 		Token:     token,
 	}
 
-	err = a.amqp.Publish(ctx, "user.registered", msg)
+	err = a.amqp.Publish(ctx, "user.notification.registered", msg)
 	if err != nil {
 		log.Error("failed to publish", logger.Err(err))
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -243,6 +242,40 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 			log.Error("failed to activate user", logger.Err(err))
 			return fmt.Errorf("%s: %w", op, err)
 		}
+	}
+
+	user, err := a.usrStorage.GetUserByID(ctx, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user does not exists", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, err)
+		}
+
+	}
+	msg := struct {
+		ID        int64  `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+		Barcode   string `json:"barcode"`
+		AvatarURL string `json:"avatar_url"`
+	}{
+		ID:        user.ID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.Barcode,
+		Barcode:   user.Barcode,
+		AvatarURL: user.AvatarURL,
+	}
+
+	err = a.amqp.Publish(ctx, "user.club.activated", msg)
+	if err != nil {
+		log.Error("failed to publish user.activated", logger.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	err = a.activationTokenStorage.Delete(ctx, token)

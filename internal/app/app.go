@@ -46,7 +46,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	}
 
 	authService := auth.New(log, postgres, redisStrg, redisStrg, rmq)
-	managementService := management.New(log, postgres, imageClient)
+	managementService := management.New(log, postgres, imageClient, rmq)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
 

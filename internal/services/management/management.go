@@ -22,6 +22,11 @@ type Management struct {
 	log         *slog.Logger
 	usrStorage  UserStorage
 	imageClient *image.Client
+	amqp        Amqp
+}
+
+type Amqp interface {
+	Publish(ctx context.Context, routingKey string, msg any) error
 }
 
 type UserStorage interface {
@@ -31,11 +36,12 @@ type UserStorage interface {
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
 }
 
-func New(log *slog.Logger, storage UserStorage, client *image.Client) *Management {
+func New(log *slog.Logger, storage UserStorage, client *image.Client, amqp Amqp) *Management {
 	return &Management{
 		log:         log,
 		usrStorage:  storage,
 		imageClient: client,
+		amqp:        amqp,
 	}
 }
 
@@ -76,6 +82,30 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 		}
 	}
 
+	msg := struct {
+		ID        int64   `json:"id"`
+		FirstName *string `json:"first_name"`
+		LastName  *string `json:"last_name"`
+		AvatarURL *string `json:"avatar_url"`
+		Major     *string `json:"major"`
+		GroupName *string `json:"group_name"`
+		Year      *int    `json:"year"`
+	}{
+		ID:        user.ID,
+		FirstName: &user.FirstName,
+		LastName:  &user.LastName,
+		AvatarURL: &user.AvatarURL,
+		Major:     &user.Major,
+		GroupName: &user.GroupName,
+		Year:      &user.Year,
+	}
+
+	err = m.amqp.Publish(ctx, "user.club.updated", msg)
+	if err != nil {
+		log.Error("failed to publish user updated event", logger.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }
 
@@ -93,6 +123,12 @@ func (m Management) DeleteUser(ctx context.Context, userID int64) error {
 			log.Error("failed to delete user", logger.Err(err))
 			return fmt.Errorf("%s: %w", op, err)
 		}
+	}
+
+	err = m.amqp.Publish(ctx, "user.club.deleted", userID)
+	if err != nil {
+		log.Error("failed to publish user deleted event", logger.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
@@ -145,6 +181,20 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 			log.Error("failed to update user avatar url", logger.Err(err))
 			return fmt.Errorf("%s: %w", op, err)
 		}
+	}
+
+	msg := struct {
+		ID        int64   `json:"id"`
+		AvatarURL *string `json:"avatar_url"`
+	}{
+		ID:        user.ID,
+		AvatarURL: &user.AvatarURL,
+	}
+
+	err = m.amqp.Publish(ctx, "user.club.updated", msg)
+	if err != nil {
+		log.Error("failed to publish user updated event", logger.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil

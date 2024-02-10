@@ -9,10 +9,11 @@ import (
 )
 
 type Rabbitmq struct {
-	conn *amqp091.Connection
-	ch   *amqp091.Channel
-	cfg  config.Rabbitmq
-	q    *amqp091.Queue
+	conn          *amqp091.Connection
+	ch            *amqp091.Channel
+	cfg           config.Rabbitmq
+	notificationQ *amqp091.Queue
+	clubQ         *amqp091.Queue
 }
 
 func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
@@ -42,18 +43,44 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 		return nil, fmt.Errorf("%s: failed to declare exchange: %w", op, err)
 	}
 
-	q, err := ch.QueueDeclare(
-		cfg.QueueName,
+	nQ, err := ch.QueueDeclare(
+		"notification",
 		true,
 		false,
 		false,
 		false,
 		nil,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to declare notification queue: %w", op, err)
+	}
+
+	cQ, err := ch.QueueDeclare(
+		"club",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to declare notification queue: %w", op, err)
+	}
 
 	err = ch.QueueBind(
-		cfg.QueueName,
-		"user.*",
+		nQ.Name,
+		"user.notification.*",
+		cfg.ExchangeName,
+		false,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to bind exchange to queue: %w", op, err)
+	}
+
+	err = ch.QueueBind(
+		cQ.Name,
+		"user.club.*",
 		cfg.ExchangeName,
 		false,
 		nil,
@@ -63,10 +90,11 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 	}
 
 	return &Rabbitmq{
-		conn: conn,
-		ch:   ch,
-		q:    &q,
-		cfg:  cfg,
+		conn:          conn,
+		ch:            ch,
+		notificationQ: &nQ,
+		clubQ:         &cQ,
+		cfg:           cfg,
 	}, nil
 }
 
