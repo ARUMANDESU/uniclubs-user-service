@@ -87,17 +87,11 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 		FirstName *string `json:"first_name"`
 		LastName  *string `json:"last_name"`
 		AvatarURL *string `json:"avatar_url"`
-		Major     *string `json:"major"`
-		GroupName *string `json:"group_name"`
-		Year      *int    `json:"year"`
 	}{
 		ID:        user.ID,
 		FirstName: &user.FirstName,
 		LastName:  &user.LastName,
 		AvatarURL: &user.AvatarURL,
-		Major:     &user.Major,
-		GroupName: &user.GroupName,
-		Year:      &user.Year,
 	}
 
 	err = m.amqp.Publish(ctx, "user.club.updated", msg)

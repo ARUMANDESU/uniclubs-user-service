@@ -267,7 +267,7 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 		ID:        user.ID,
 		Email:     user.Email,
 		FirstName: user.FirstName,
-		LastName:  user.Barcode,
+		LastName:  user.LastName,
 		Barcode:   user.Barcode,
 		AvatarURL: user.AvatarURL,
 	}

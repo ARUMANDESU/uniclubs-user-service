@@ -75,7 +75,7 @@ func (s *Storage) SaveUser(ctx context.Context, user *models.User) error {
 }
 
 func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, error) {
-	const op = "storage.postgresql.GetUserByEmail"
+	const op = "storage.postgresql.GetUserByID"
 
 	stmt, err := s.DB.Prepare(`
 		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.avatar_url, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
