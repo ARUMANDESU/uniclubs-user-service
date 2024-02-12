@@ -3,7 +3,7 @@ module github.com/ARUMANDESU/uniclubs-user-service
 go 1.21.4
 
 require (
-	github.com/ARUMANDESU/uniclubs-protos v0.0.10
+	github.com/ARUMANDESU/uniclubs-protos v0.0.14
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
 	github.com/golang-migrate/migrate/v4 v4.17.0
 	github.com/golang/protobuf v1.5.3

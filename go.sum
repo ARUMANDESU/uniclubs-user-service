@@ -4,6 +4,14 @@ github.com/ARUMANDESU/uniclubs-protos v0.0.9 h1:EzrfAcSS1rOmi2BGphMzE3pdBkZtXjHX
 github.com/ARUMANDESU/uniclubs-protos v0.0.9/go.mod h1:1bg7hGRVQ/oLWI9GAHQHekdjMsAVKy7BXUjUsgRXYPk=
 github.com/ARUMANDESU/uniclubs-protos v0.0.10 h1:AwEQe0qoWtf8H7WVnQ65Q0lej34/nKMgwFDKuuuaopo=
 github.com/ARUMANDESU/uniclubs-protos v0.0.10/go.mod h1:1bg7hGRVQ/oLWI9GAHQHekdjMsAVKy7BXUjUsgRXYPk=
+github.com/ARUMANDESU/uniclubs-protos v0.0.11 h1:Kb2hxsZYiCLiBgVPTUSURWnDtU0fEjOw7NJGsUrVLY4=
+github.com/ARUMANDESU/uniclubs-protos v0.0.11/go.mod h1:1bg7hGRVQ/oLWI9GAHQHekdjMsAVKy7BXUjUsgRXYPk=
+github.com/ARUMANDESU/uniclubs-protos v0.0.12 h1:aKMxAVMvL/RtunV9ULCSCezJ6wmbjI4l/5/BzXs5cHg=
+github.com/ARUMANDESU/uniclubs-protos v0.0.12/go.mod h1:1bg7hGRVQ/oLWI9GAHQHekdjMsAVKy7BXUjUsgRXYPk=
+github.com/ARUMANDESU/uniclubs-protos v0.0.13 h1:SImH5Hn5k35l73VgA7KiYHdesKvfzWo+C0sawt8Wl3Q=
+github.com/ARUMANDESU/uniclubs-protos v0.0.13/go.mod h1:1bg7hGRVQ/oLWI9GAHQHekdjMsAVKy7BXUjUsgRXYPk=
+github.com/ARUMANDESU/uniclubs-protos v0.0.14 h1:qr8BkJlK/RxUOb4j18J9ryZfeP5RDbGj0qUqFQNo4qM=
+github.com/ARUMANDESU/uniclubs-protos v0.0.14/go.mod h1:1bg7hGRVQ/oLWI9GAHQHekdjMsAVKy7BXUjUsgRXYPk=
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 h1:L/gRVlceqvL25UVaW/CKtUDjefjrs0SPonmDGUVOYP0=
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/BurntSushi/toml v1.2.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=

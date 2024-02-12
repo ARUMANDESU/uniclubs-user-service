@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users(
     created_at timestamp DEFAULT CURRENT_TIMESTAMP,
     activated boolean not null default false,
     locked boolean not null default false,
-    barcode VARCHAR(255) NOT NULL UNIQUE DEFAULT '',
+    barcode VARCHAR(255) NOT NULL UNIQUE,
     phone_number VARCHAR(255) NOT NULL DEFAULT '',
     major TEXT NOT NULL DEFAULT '',
     group_name TEXT NOT NULL DEFAULT '',

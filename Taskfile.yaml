@@ -4,12 +4,12 @@ vars:
   DATABASE_DSN: "postgresql://postgres:admin@localhost:5432/user_service"
 
 tasks:
-  local:
+  run:local:
     aliases:
       - loc
     cmd: go run cmd/user-server/main.go --config=./config/local.yaml
 
-  development:
+  run:dev:
     aliases:
       - dev
     cmd: go run cmd/user-server/main.go --config=./config/dev.yaml
@@ -19,8 +19,8 @@ tasks:
       - doc-img
     cmd: docker build -t arumandesu/user-service -t arumandesu/user-service:0.0.5 . && docker push arumandesu/user-service -a
 
-  migrate-up:
-    cmd: migrate -path ./migrations -database $DATABASE_DSN up
+  migrate:up:
+    cmd: migrate -path ./migrations -database {{.DATABASE_DSN}} up
 
-  migrate-down:
-    cmd: migrate -path ./migrations -database $DATABASE_DSN down
+  migrate:down:
+    cmd: migrate -path ./migrations -database {{.DATABASE_DSN}} down

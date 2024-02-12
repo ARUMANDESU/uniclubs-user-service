@@ -151,16 +151,6 @@ func (s serverApi) SearchUsers(ctx context.Context, req *userv1.SearchUsersReque
 	}, nil
 }
 
-func (s serverApi) UnlockAccount(ctx context.Context, req *userv1.UnlockAccountRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s serverApi) LockAccount(ctx context.Context, req *userv1.LockAccountRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequest) (*empty.Empty, error) {
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.Image, validation.Required),
@@ -176,4 +166,19 @@ func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarReq
 	}
 
 	return &empty.Empty{}, nil
+}
+
+func (s serverApi) ChangeUserRole(ctx context.Context, request *userv1.ChangeUserRoleRequest) (*empty.Empty, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s serverApi) UnlockAccount(ctx context.Context, req *userv1.UnlockAccountRequest) (*empty.Empty, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s serverApi) LockAccount(ctx context.Context, req *userv1.LockAccountRequest) (*empty.Empty, error) {
+	//TODO implement me
+	panic("implement me")
 }

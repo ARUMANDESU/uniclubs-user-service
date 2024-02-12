@@ -36,5 +36,5 @@ ENV ENV="dev"\
 EXPOSE 44044
 
 # Run the application.
-ENTRYPOINT ["./build/user-server/main", "--config=./config/dev.yaml"]
+ENTRYPOINT ["./build/user-server/main"]
 CMD ["migrate", "-path", "./migrations", "-database", "$DATABASE_DSN?sslmode=disable", "up"]
