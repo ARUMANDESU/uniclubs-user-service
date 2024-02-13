@@ -70,7 +70,7 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrUserNotExist):
-			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
+			return nil, status.Error(codes.NotFound, "invalid email or password")
 		case errors.Is(err, auth.ErrInvalidCredentials):
 			return nil, status.Error(codes.InvalidArgument, "invalid email or password")
 		default:
