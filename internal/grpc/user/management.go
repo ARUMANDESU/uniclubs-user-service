@@ -10,7 +10,6 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Management interface {
@@ -22,10 +21,10 @@ type Management interface {
 	) (users []*domain.User, metadata domain.Metadata, err error)
 	UpdateUser(ctx context.Context, user *domain.User) error
 	DeleteUser(ctx context.Context, userID int64) error
-	UpdateAvatar(ctx context.Context, userID int64, image []byte) error
+	UpdateAvatar(ctx context.Context, userID int64, image []byte) (*domain.User, error)
 }
 
-func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UpdateUserResponse, error) {
+func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UserObject, error) {
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.UserId, validation.Required),
 		validation.Field(&req.Year, validation.Min(1)),
@@ -54,7 +53,7 @@ func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest
 		case "group_name":
 			user.GroupName = req.GetGroupName()
 		case "year":
-			user.Year = int(req.GetYear())
+			user.Year = req.GetYear()
 		}
 	}
 
@@ -66,7 +65,7 @@ func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &userv1.UpdateUserResponse{UserId: user.ID}, nil
+	return user.ToUserObject(), nil
 
 }
 
@@ -90,7 +89,7 @@ func (s serverApi) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest
 
 }
 
-func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.GetUserResponse, error) {
+func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.UserObject, error) {
 	err := validation.Validate(&req.UserId, validation.Required, validation.Min(1))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -104,20 +103,7 @@ func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*us
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &userv1.GetUserResponse{
-		UserId:    user.ID,
-		Email:     user.Email,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		AvatarUrl: user.AvatarURL,
-		Barcode:   user.Barcode,
-		Major:     user.Major,
-		GroupName: user.GroupName,
-		Year:      int32(user.Year),
-		CreatedAt: timestamppb.New(user.CreatedAt),
-		Role:      user.MapRoleStringToEnum(),
-	}, nil
-
+	return user.ToUserObject(), nil
 }
 
 func (s serverApi) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
@@ -151,7 +137,7 @@ func (s serverApi) SearchUsers(ctx context.Context, req *userv1.SearchUsersReque
 	}, nil
 }
 
-func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequest) (*empty.Empty, error) {
+func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequest) (*userv1.UserObject, error) {
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.Image, validation.Required),
 		validation.Field(&req.UserId, validation.Required, validation.Min(1)),
@@ -160,12 +146,12 @@ func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarReq
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	err = s.management.UpdateAvatar(ctx, req.GetUserId(), req.GetImage())
+	user, err := s.management.UpdateAvatar(ctx, req.GetUserId(), req.GetImage())
 	if err != nil {
 		return nil, status.Error(codes.Internal, ErrInternal.Error())
 	}
 
-	return &empty.Empty{}, nil
+	return user.ToUserObject(), nil
 }
 
 func (s serverApi) ChangeUserRole(ctx context.Context, request *userv1.ChangeUserRoleRequest) (*empty.Empty, error) {

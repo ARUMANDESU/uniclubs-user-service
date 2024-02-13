@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -33,7 +32,7 @@ func New(databaseDSN string) (*Storage, error) {
 	return &Storage{DB: db}, nil
 }
 
-func (s *Storage) SaveUser(ctx context.Context, user *models.User) error {
+func (s *Storage) SaveUser(ctx context.Context, user *domain.User) error {
 	const op = "storage.postgresql.SaveUser"
 
 	stmt, err := s.DB.Prepare(`
@@ -74,7 +73,7 @@ func (s *Storage) SaveUser(ctx context.Context, user *models.User) error {
 	return nil
 }
 
-func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, error) {
+func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
 	const op = "storage.postgresql.GetUserByID"
 
 	stmt, err := s.DB.Prepare(`
@@ -90,7 +89,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, 
 	defer stmt.Close()
 
 	result := stmt.QueryRowContext(ctx, userID)
-	user := models.User{}
+	user := domain.User{}
 
 	err = result.Scan(
 		&user.ID, &user.Email, &user.PasswordHash,
@@ -108,7 +107,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*models.User, 
 	return &user, nil
 }
 
-func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
 	const op = "storage.postgresql.GetUserByEmail"
 
 	stmt, err := s.DB.Prepare(`
@@ -124,7 +123,7 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*models.Use
 	defer stmt.Close()
 
 	result := stmt.QueryRowContext(ctx, email)
-	user := models.User{}
+	user := domain.User{}
 
 	err = result.Scan(
 		&user.ID, &user.Email, &user.PasswordHash,
@@ -168,7 +167,7 @@ func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role strin
 	return role, nil
 }
 
-func (s *Storage) UpdateUser(ctx context.Context, user *models.User) error {
+func (s *Storage) UpdateUser(ctx context.Context, user *domain.User) error {
 	const op = "storage.postgresql.UpdateUser"
 
 	stmt, err := s.DB.Prepare(`
@@ -272,9 +271,10 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
 		WHERE 
-			(STRPOS(LOWER(email), LOWER($1)) > 0 OR $1 = '') OR
+			( (STRPOS(LOWER(email), LOWER($1)) > 0 OR $1 = '') OR
 			(STRPOS(LOWER(first_name), LOWER($1)) > 0 OR $1 = '') OR
-			(STRPOS(LOWER(last_name), LOWER($1)) > 0 OR $1 = '')
+			(STRPOS(LOWER(last_name), LOWER($1)) > 0 OR $1 = '') )
+			AND u.activated
 		ORDER BY id ASC
         LIMIT $2 OFFSET $3;
 	`)
@@ -301,7 +301,7 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 	for rows.Next() {
 		var user domain.User
 
-		err := rows.Scan(
+		err = rows.Scan(
 			&totalRecords, &user.ID, &user.Email,
 			&user.FirstName, &user.LastName, &user.AvatarURL,
 			&user.CreatedAt, &user.Barcode, &user.Major,

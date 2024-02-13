@@ -6,11 +6,11 @@ import (
 	"fmt"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/activate"
-	session "github.com/ARUMANDESU/uniclubs-user-service/pkg/token/session"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/session"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"time"
@@ -29,9 +29,9 @@ type Amqp interface {
 }
 
 type UserStorage interface {
-	SaveUser(ctx context.Context, user *models.User) error
-	GetUserByID(ctx context.Context, userID int64) (user *models.User, err error)
-	GetUserByEmail(ctx context.Context, email string) (user *models.User, err error)
+	SaveUser(ctx context.Context, user *domain.User) error
+	GetUserByID(ctx context.Context, userID int64) (user *domain.User, err error)
+	GetUserByEmail(ctx context.Context, email string) (user *domain.User, err error)
 	GetUserRoleByID(ctx context.Context, userID int64) (role string, err error)
 	ActivateUser(ctx context.Context, userID int64) error
 }
@@ -66,7 +66,7 @@ func New(
 	}
 }
 
-func (a Auth) Login(ctx context.Context, email string, password string) (token string, err error) {
+func (a Auth) Login(ctx context.Context, email string, password string) (*domain.User, string, error) {
 	const op = "authService.Login"
 	log := a.log.With(slog.String("op", op))
 
@@ -76,48 +76,48 @@ func (a Auth) Login(ctx context.Context, email string, password string) (token s
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
 			log.Error("user does not exists", logger.Err(err))
-			return "", fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return nil, "", fmt.Errorf("%s: %w", op, ErrUserNotExist)
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return "", fmt.Errorf("%s: %w", op, err)
+			return nil, "", fmt.Errorf("%s: %w", op, err)
 		}
 
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
 		log.Info("invalid credentials", logger.Err(err))
-		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+		return nil, "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	token, err = session.GenerateToken()
+	token, err := session.GenerateToken()
 	if err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
+		return nil, "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	err = a.sessionStorage.Create(ctx, token, user.ID, time.Hour*24)
 	if err != nil {
 		log.Info("can not save session", logger.Err(err))
-		return "", fmt.Errorf("%s: %w", op, err)
+		return nil, "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	return token, nil
+	return user, token, nil
 }
 
-func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err error) {
+func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID int64, err error) {
 	const op = "authService.Register"
 
 	log := a.log.With(slog.String("op", op))
 
-	modelUser := domain.UserToModelUser(user)
+	user := dto.ToDomain()
 
-	modelUser.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	user.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Error("failed to generate password hash", logger.Err(err))
 
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	err = a.usrStorage.SaveUser(ctx, modelUser)
+	err = a.usrStorage.SaveUser(ctx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserExists):
@@ -134,7 +134,7 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-	err = a.activationTokenStorage.Create(ctx, token, modelUser.ID, time.Hour*24)
+	err = a.activationTokenStorage.Create(ctx, token, user.ID, time.Hour*24)
 	if err != nil {
 		log.Info("can not save activate token", logger.Err(err))
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -146,9 +146,9 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 		Email     string `json:"email"`
 		Token     string `json:"token"`
 	}{
-		FirstName: modelUser.FirstName,
-		LastName:  modelUser.LastName,
-		Email:     modelUser.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
 		Token:     token,
 	}
 
@@ -158,7 +158,7 @@ func (a Auth) Register(ctx context.Context, user domain.User) (userID int64, err
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return modelUser.ID, nil
+	return user.ID, nil
 }
 
 func (a Auth) Logout(ctx context.Context, sessionToken string) error {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/go-ozzo/ozzo-validation/is"
@@ -17,8 +18,8 @@ type Auth interface {
 	Login(ctx context.Context,
 		email string,
 		password string,
-	) (token string, err error)
-	Register(ctx context.Context, user domain.User) (userID int64, err error)
+	) (user *domain.User, token string, err error)
+	Register(ctx context.Context, user *dtos.UserRegisterDTO) (userID int64, err error)
 	Logout(ctx context.Context, sessionToken string) error
 	Authenticate(ctx context.Context, sessionToken string) (userID int64, err error)
 	CheckUserRole(
@@ -38,25 +39,14 @@ func (s serverApi) Register(ctx context.Context, req *userv1.RegisterRequest) (*
 		validation.Field(&req.FirstName, validation.Required),
 		validation.Field(&req.LastName, validation.Required),
 		validation.Field(&req.Major, validation.Required),
-		validation.Field(&req.Year, validation.Required),
+		validation.Field(&req.Year, validation.Required, validation.Min(1)),
 		validation.Field(&req.GroupName, validation.Required),
 	)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	user := domain.User{
-		FirstName: req.GetFirstName(),
-		LastName:  req.GetLastName(),
-		Email:     req.GetEmail(),
-		Password:  req.GetPassword(),
-		Barcode:   req.GetBarcode(),
-		Major:     req.GetMajor(),
-		GroupName: req.GetGroupName(),
-		Year:      int(req.GetYear()),
-	}
-
-	userID, err := s.auth.Register(ctx, user)
+	userID, err := s.auth.Register(ctx, dtos.RegisterRequestToDTO(req))
 	if err != nil {
 		if errors.Is(err, auth.ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, ErrUserAlreadyExists.Error())
@@ -76,7 +66,7 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
+	user, token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrUserNotExist):
@@ -89,7 +79,7 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 
 	}
 
-	return &userv1.LoginResponse{SessionToken: token}, nil
+	return &userv1.LoginResponse{SessionToken: token, User: user.ToUserObject()}, nil
 }
 
 func (s serverApi) Logout(ctx context.Context, req *userv1.LogoutRequest) (*empty.Empty, error) {

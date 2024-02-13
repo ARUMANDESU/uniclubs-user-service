@@ -7,7 +7,6 @@ import (
 	imagev1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/filestorage"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/models"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"log/slog"
@@ -30,8 +29,8 @@ type Amqp interface {
 }
 
 type UserStorage interface {
-	GetUserByID(ctx context.Context, userID int64) (user *models.User, err error)
-	UpdateUser(ctx context.Context, user *models.User) error
+	GetUserByID(ctx context.Context, userID int64) (user *domain.User, err error)
+	UpdateUser(ctx context.Context, user *domain.User) error
 	DeleteUserByID(ctx context.Context, userID int64) error
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
 }
@@ -62,7 +61,7 @@ func (m Management) GetUser(ctx context.Context, userID int64) (*domain.User, er
 
 	}
 
-	return domain.ModelUserToDomainUser(*user), nil
+	return user, nil
 
 }
 
@@ -70,7 +69,7 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 	const op = "Management.UpdateUser"
 	log := m.log.With(slog.String("op", op))
 
-	err := m.usrStorage.UpdateUser(ctx, domain.UserToModelUser(*user))
+	err := m.usrStorage.UpdateUser(ctx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
@@ -142,7 +141,7 @@ func (m Management) SearchUsers(ctx context.Context, query string, filters domai
 
 }
 
-func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte) error {
+func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte) (*domain.User, error) {
 	const op = "Management.UpdateAvatar"
 	log := m.log.With(slog.String("op", op))
 
@@ -151,17 +150,17 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
 			log.Error("user does not exists", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return nil, fmt.Errorf("%s: %w", op, ErrUserNotExist)
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
 
 	res, err := m.imageClient.UploadImage(ctx, &imagev1.UploadImageRequest{Image: image, Filename: user.Barcode})
 	if err != nil {
 		log.Error("failed to upload avatar", logger.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	user.AvatarURL = res.GetImageUrl()
 
@@ -170,10 +169,10 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
 			log.Error("user not found", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return nil, fmt.Errorf("%s: %w", op, ErrUserNotExist)
 		default:
 			log.Error("failed to update user avatar url", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, err)
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 	}
 
@@ -188,8 +187,8 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 	err = m.amqp.Publish(ctx, "user.club.updated", msg)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return nil
+	return user, nil
 }
