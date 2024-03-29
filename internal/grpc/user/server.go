@@ -12,6 +12,7 @@ var (
 	ErrActivationTokenNotFound = errors.New("activation token not found")
 	ErrSessionNotFound         = errors.New("session not found")
 	ErrInternal                = errors.New("internal error")
+	ErrUserNonAuthorized       = errors.New("user is not authorized")
 )
 
 type serverApi struct {

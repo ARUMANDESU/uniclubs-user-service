@@ -23,7 +23,7 @@ type User struct {
 	Year         int32     `json:"year"`
 }
 
-func (u *User) MapRoleStringToEnum() userv1.Role {
+func MapRoleStringToEnum(u *User) userv1.Role {
 	switch u.Role {
 	case "GUEST":
 		return userv1.Role_GUEST
@@ -52,7 +52,7 @@ func (u *User) ToUserObject() *userv1.UserObject {
 		GroupName: u.GroupName,
 		Year:      u.Year,
 		CreatedAt: timestamppb.New(u.CreatedAt),
-		Role:      u.MapRoleStringToEnum(),
+		Role:      MapRoleStringToEnum(u),
 	}
 }
 

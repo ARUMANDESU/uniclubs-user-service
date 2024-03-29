@@ -5,6 +5,7 @@ import (
 	"errors"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/management"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -22,6 +23,7 @@ type Management interface {
 	UpdateUser(ctx context.Context, user *domain.User) error
 	DeleteUser(ctx context.Context, userID int64) error
 	UpdateAvatar(ctx context.Context, userID int64, image []byte) (*domain.User, error)
+	ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error
 }
 
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UserObject, error) {
@@ -154,9 +156,28 @@ func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarReq
 	return user.ToUserObject(), nil
 }
 
-func (s serverApi) ChangeUserRole(ctx context.Context, request *userv1.ChangeUserRoleRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
+func (s serverApi) ChangeUserRole(ctx context.Context, req *userv1.ChangeUserRoleRequest) (*empty.Empty, error) {
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.TargetId, validation.Required, validation.Min(1)),
+		validation.Field(&req.UserId, validation.Required, validation.Min(1)),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = s.management.ChangeUserRole(ctx, dtos.ChangeRoleToDTO(req))
+	if err != nil {
+		switch {
+		case errors.Is(err, management.ErrUserNotExist):
+			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
+		case errors.Is(err, management.ErrUserNonAuthorized):
+			return nil, status.Error(codes.PermissionDenied, ErrUserNonAuthorized.Error())
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
+	return &empty.Empty{}, nil
 }
 
 func (s serverApi) UnlockAccount(ctx context.Context, req *userv1.UnlockAccountRequest) (*empty.Empty, error) {

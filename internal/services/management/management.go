@@ -7,6 +7,7 @@ import (
 	imagev1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/filestorage"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"log/slog"
@@ -15,6 +16,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrUserNotExist       = errors.New("user does not exist")
+	ErrUserNonAuthorized  = errors.New("user is not authorized")
 )
 
 type Management struct {
@@ -31,6 +33,7 @@ type Amqp interface {
 type UserStorage interface {
 	GetUserByID(ctx context.Context, userID int64) (user *domain.User, err error)
 	UpdateUser(ctx context.Context, user *domain.User) error
+	UpdateUserRole(ctx context.Context, userID int64, role string) error
 	DeleteUserByID(ctx context.Context, userID int64) error
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
 }
@@ -191,4 +194,57 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 	}
 
 	return user, nil
+}
+
+func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error {
+	const op = "Management.ChangeUserRole"
+	log := m.log.With(slog.String("op", op))
+
+	user, err := m.usrStorage.GetUserByID(ctx, dto.UserID)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user does not exists", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	if user.Role != "DSVR" && user.Role != "ADMIN" {
+		return fmt.Errorf("%s: %w", op, ErrUserNonAuthorized)
+	}
+
+	target, err := m.usrStorage.GetUserByID(ctx, dto.TargetID)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			log.Error("user does not exists", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	if user.Role == "DSVR" {
+		if target.Role == "DSVR" || dto.Role == "DSVR" {
+			return fmt.Errorf("%s: %w", op, ErrUserNonAuthorized)
+		}
+	} else if user.Role == "ADMIN" {
+		if target.Role == "DSVR" || target.Role == "ADMIN" || dto.Role == "DSVR" || dto.Role == "ADMIN" {
+			return fmt.Errorf("%s: %w", op, ErrUserNonAuthorized)
+		}
+	} else {
+		return fmt.Errorf("%s: %w", op, ErrUserNonAuthorized)
+	}
+
+	err = m.usrStorage.UpdateUserRole(ctx, target.ID, dto.Role)
+	if err != nil {
+		log.Error("failed to update user's role", logger.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }

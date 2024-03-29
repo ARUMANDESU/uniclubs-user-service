@@ -322,3 +322,33 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 
 	return users, metadata, nil
 }
+
+func (s *Storage) UpdateUserRole(ctx context.Context, userID int64, role string) error {
+	const op = "storage.postgresql.UpdateUserRole"
+
+	stmt, err := s.DB.Prepare(`
+		UPDATE users
+		SET role_id = r.id
+		FROM roles r
+		WHERE users.id = $1 AND users.activated AND r.name = $2;
+	`)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer stmt.Close()
+
+	result, err := stmt.ExecContext(ctx, userID, role)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+	}
+
+	return nil
+}

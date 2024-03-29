@@ -16,6 +16,20 @@ type UserRegisterDTO struct {
 	Year      int32
 }
 
+type ChangeRoleDTO struct {
+	UserID   int64
+	TargetID int64
+	Role     string
+}
+
+func ChangeRoleToDTO(req *userv1.ChangeUserRoleRequest) *ChangeRoleDTO {
+	return &ChangeRoleDTO{
+		UserID:   req.UserId,
+		TargetID: req.TargetId,
+		Role:     req.Role.String(),
+	}
+}
+
 func (u *UserRegisterDTO) ToDomain() *domain.User {
 	return &domain.User{
 		FirstName:    u.FirstName,
