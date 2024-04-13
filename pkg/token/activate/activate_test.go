@@ -1,4 +1,4 @@
-package session
+package activate
 
 import (
 	"crypto/rand"
@@ -22,7 +22,7 @@ func TestGenerateToken(t *testing.T) {
 	// Replace rand.Reader with MockRand for predictable test results
 	rand.Reader = &MockRand{}
 
-	expectedToken := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" // this is hexadecimal representation of the 0..31 slice of bytes
+	expectedToken := "000102030405060708090a0b0c0d0e0f" // this is hexadecimal representation of the 0..15 slice of bytes
 	token, err := GenerateToken()
 
 	if !assert.NoError(t, err) {
