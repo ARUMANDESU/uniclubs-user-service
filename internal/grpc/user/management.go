@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=Management
 type Management interface {
 	GetUser(ctx context.Context, userID int64) (user *domain.User, err error)
 	SearchUsers(

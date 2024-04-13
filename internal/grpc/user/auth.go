@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=Auth
 type Auth interface {
 	Login(ctx context.Context,
 		email string,
