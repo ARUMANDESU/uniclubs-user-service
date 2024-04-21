@@ -8,6 +8,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"log/slog"
@@ -96,7 +97,7 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 		AvatarURL: &user.AvatarURL,
 	}
 
-	err = m.amqp.Publish(ctx, "user.club.updated", msg)
+	err = m.amqp.Publish(ctx, rabbitmq.UserUpdatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)
@@ -121,7 +122,7 @@ func (m Management) DeleteUser(ctx context.Context, userID int64) error {
 		}
 	}
 
-	err = m.amqp.Publish(ctx, "user.club.deleted", userID)
+	err = m.amqp.Publish(ctx, rabbitmq.UserDeletedEventRoutingKey, userID)
 	if err != nil {
 		log.Error("failed to publish user deleted event", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)
@@ -187,7 +188,7 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 		AvatarURL: &user.AvatarURL,
 	}
 
-	err = m.amqp.Publish(ctx, "user.club.updated", msg)
+	err = m.amqp.Publish(ctx, rabbitmq.UserUpdatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -243,6 +244,20 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 	err = m.usrStorage.UpdateUserRole(ctx, target.ID, dto.Role)
 	if err != nil {
 		log.Error("failed to update user's role", logger.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	msg := struct {
+		ID      int64  `json:"id"`
+		Message string `json:"message"`
+	}{
+		ID:      user.ID,
+		Message: fmt.Sprintf("Your global role was updated: %s", dto.Role),
+	}
+
+	err = m.amqp.Publish(ctx, rabbitmq.PushNotificationRoutingKey, msg)
+	if err != nil {
+		log.Error("failed to publish push notification", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)
 	}
 

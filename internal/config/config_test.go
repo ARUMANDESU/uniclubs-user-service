@@ -111,8 +111,6 @@ rabbitmq:
   password: "admin"
   host: "localhost"
   port: "5672"
-  exchange_name: "test_exchange"
-  queue_name: "test_queue"
 clients:
   image:
     address: "image_service_address"
@@ -137,8 +135,6 @@ func setEnvVariables() {
 	os.Setenv("RABBITMQ_PASSWORD", "admin")
 	os.Setenv("RABBITMQ_HOST", "localhost")
 	os.Setenv("RABBITMQ_PORT", "5672")
-	os.Setenv("RABBITMQ_EXCHANGE_NAME", "test_exchange")
-	os.Setenv("RABBITMQ_QUEUE_NAME", "test_queue")
 	os.Setenv("IMAGE_SERVICE_ADDRESS", "image_service_address")
 	os.Setenv("IMAGE_SERVICE_TIMEOUT", "3s")
 	os.Setenv("IMAGE_SERVICE_RETRIES_COUNT", "3")
@@ -156,8 +152,6 @@ func assertConfig(t *testing.T, cfg *Config) {
 	assert.Equal(t, "admin", cfg.Rabbitmq.Password)
 	assert.Equal(t, "localhost", cfg.Rabbitmq.Host)
 	assert.Equal(t, "5672", cfg.Rabbitmq.Port)
-	assert.Equal(t, "test_exchange", cfg.Rabbitmq.ExchangeName)
-	assert.Equal(t, "test_queue", cfg.Rabbitmq.QueueName)
 	assert.Equal(t, "image_service_address", cfg.Clients.Image.Address)
 	assert.Equal(t, 3*time.Second, cfg.Clients.Image.Timeout)
 	assert.Equal(t, 3, cfg.Clients.Image.RetriesCount)
@@ -173,8 +167,6 @@ func unsetEnvVariables() {
 	os.Unsetenv("RABBITMQ_PASSWORD")
 	os.Unsetenv("RABBITMQ_HOST")
 	os.Unsetenv("RABBITMQ_PORT")
-	os.Unsetenv("RABBITMQ_EXCHANGE_NAME")
-	os.Unsetenv("RABBITMQ_QUEUE_NAME")
 	os.Unsetenv("IMAGE_SERVICE_ADDRESS")
 	os.Unsetenv("IMAGE_SERVICE_TIMEOUT")
 	os.Unsetenv("IMAGE_SERVICE_RETRIES_COUNT")

@@ -7,6 +7,7 @@ import (
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/activate"
@@ -152,7 +153,7 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 		Token:     token,
 	}
 
-	err = a.amqp.Publish(ctx, "user.notification.registered", msg)
+	err = a.amqp.Publish(ctx, rabbitmq.UserRegisteredEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish", logger.Err(err))
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -272,7 +273,7 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 		AvatarURL: user.AvatarURL,
 	}
 
-	err = a.amqp.Publish(ctx, "user.club.activated", msg)
+	err = a.amqp.Publish(ctx, rabbitmq.UserActivatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user.activated", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)

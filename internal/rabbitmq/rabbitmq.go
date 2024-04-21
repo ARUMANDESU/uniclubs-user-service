@@ -5,22 +5,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
-	"github.com/rabbitmq/amqp091-go"
+	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+const (
+	exchangeName                  = "user-exchange"
+	PushNotificationRoutingKey    = "user.notification.push"
+	UserRegisteredEventRoutingKey = "user.notification.email.registered"
+	UserUpdatedEventRoutingKey    = "user.event.updated"
+	UserActivatedEventRoutingKey  = "user.event.activated"
+	UserDeletedEventRoutingKey    = "user.event.deleted"
 )
 
 type Rabbitmq struct {
-	conn          *amqp091.Connection
-	ch            *amqp091.Channel
-	cfg           config.Rabbitmq
-	notificationQ *amqp091.Queue
-	clubQ         *amqp091.Queue
+	conn *amqp.Connection
+	ch   *amqp.Channel
+	cfg  config.Rabbitmq
 }
 
 func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 	const op = "Rabbitmq.New"
 
 	connString := fmt.Sprintf("amqp://%v:%v@%v:%v/", cfg.User, cfg.Password, cfg.Host, cfg.Port)
-	conn, err := amqp091.Dial(connString)
+	conn, err := amqp.Dial(connString)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to connect to amqp server: %w", op, err)
 	}
@@ -31,7 +38,7 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 	}
 
 	err = ch.ExchangeDeclare(
-		cfg.ExchangeName,
+		exchangeName,
 		"topic",
 		true,
 		false,
@@ -43,58 +50,10 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 		return nil, fmt.Errorf("%s: failed to declare exchange: %w", op, err)
 	}
 
-	nQ, err := ch.QueueDeclare(
-		"notification",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to declare notification queue: %w", op, err)
-	}
-
-	cQ, err := ch.QueueDeclare(
-		"club",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to declare notification queue: %w", op, err)
-	}
-
-	err = ch.QueueBind(
-		nQ.Name,
-		"user.notification.*",
-		cfg.ExchangeName,
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to bind exchange to queue: %w", op, err)
-	}
-
-	err = ch.QueueBind(
-		cQ.Name,
-		"user.club.*",
-		cfg.ExchangeName,
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to bind exchange to queue: %w", op, err)
-	}
-
 	return &Rabbitmq{
-		conn:          conn,
-		ch:            ch,
-		notificationQ: &nQ,
-		clubQ:         &cQ,
-		cfg:           cfg,
+		conn: conn,
+		ch:   ch,
+		cfg:  cfg,
 	}, nil
 }
 
@@ -108,12 +67,12 @@ func (r *Rabbitmq) Publish(ctx context.Context, routingKey string, msg any) erro
 
 	err = r.ch.PublishWithContext(
 		ctx,
-		r.cfg.ExchangeName,
+		exchangeName,
 		routingKey,
 		false,
 		false,
-		amqp091.Publishing{
-			DeliveryMode: amqp091.Persistent,
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
 			ContentType:  "application/json",
 			Body:         bytes,
 		})

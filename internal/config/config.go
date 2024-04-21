@@ -23,12 +23,10 @@ type GRPC struct {
 }
 
 type Rabbitmq struct {
-	User         string `yaml:"user" env:"RABBITMQ_USER"`
-	Password     string `yaml:"password" env:"RABBITMQ_PASSWORD"`
-	Host         string `yaml:"host" env:"RABBITMQ_HOST"`
-	Port         string `yaml:"port" env:"RABBITMQ_PORT"`
-	ExchangeName string `yaml:"exchange_name" env:"RABBITMQ_EXCHANGE_NAME"`
-	QueueName    string `yaml:"queue_name" env:"RABBITMQ_QUEUE_NAME"`
+	User     string `yaml:"user" env:"RABBITMQ_USER"`
+	Password string `yaml:"password" env:"RABBITMQ_PASSWORD"`
+	Host     string `yaml:"host" env:"RABBITMQ_HOST"`
+	Port     string `yaml:"port" env:"RABBITMQ_PORT"`
 }
 
 type ClientsConfig struct {
