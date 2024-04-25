@@ -5,6 +5,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
+	"strings"
 	"time"
 )
 
@@ -50,6 +51,10 @@ func GetUserIDFromToken(tokenString string, secret string) (int64, error) {
 	})
 
 	if err != nil {
+		errorMessage := err.Error()
+		if strings.Contains(errorMessage, "token is expired") {
+			return 0, domain.ErrTokenIsExpired
+		}
 		return 0, err
 	}
 
