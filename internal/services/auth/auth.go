@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/activate"
-	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/session"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/jwt"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"time"
@@ -19,6 +20,7 @@ import (
 
 type Auth struct {
 	log                    *slog.Logger
+	JwtCfg                 config.JWTConfig
 	usrStorage             UserStorage
 	sessionStorage         TokenStorage
 	activationTokenStorage TokenStorage
@@ -47,12 +49,13 @@ var (
 	ErrInvalidCredentials       = errors.New("invalid credentials")
 	ErrUserExists               = errors.New("user already exists")
 	ErrUserNotExist             = errors.New("user does not exist")
-	ErrSessionNotExists         = errors.New("session does not exists")
+	ErrRefreshTokenNotExists    = errors.New("refresh token not found")
 	ErrActivationTokenNotExists = errors.New("activation token does not exists")
 )
 
 func New(
 	log *slog.Logger,
+	JwtCfg config.JWTConfig,
 	usrStorage UserStorage,
 	sessionStorage TokenStorage,
 	activateTokenStorage TokenStorage,
@@ -60,6 +63,7 @@ func New(
 ) *Auth {
 	return &Auth{
 		log:                    log,
+		JwtCfg:                 JwtCfg,
 		usrStorage:             usrStorage,
 		sessionStorage:         sessionStorage,
 		activationTokenStorage: activateTokenStorage,
@@ -67,7 +71,7 @@ func New(
 	}
 }
 
-func (a Auth) Login(ctx context.Context, email string, password string) (*domain.User, string, error) {
+func (a Auth) Login(ctx context.Context, email string, password string) (dtos.UserCredentialsDTO, error) {
 	const op = "authService.Login"
 	log := a.log.With(slog.String("op", op))
 
@@ -77,31 +81,37 @@ func (a Auth) Login(ctx context.Context, email string, password string) (*domain
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
 			log.Error("user does not exists", logger.Err(err))
-			return nil, "", fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, ErrUserNotExist)
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return nil, "", fmt.Errorf("%s: %w", op, err)
+			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
 		}
 
 	}
-
+	// compare password and hash from db
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
-		log.Info("invalid credentials", logger.Err(err))
-		return nil, "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+		return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	token, err := session.GenerateToken()
+	// Generate a pair of Access and Refresh tokens
+	tokenPair, err := jwt.GenerateTokenPair(user.ID, a.JwtCfg)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s: %w", op, err)
+		log.Error("failed to generate token pair", logger.Err(err))
+		return dtos.UserCredentialsDTO{}, err
 	}
 
-	err = a.sessionStorage.Create(ctx, token, user.ID, time.Hour*24)
+	// save rt token
+	err = a.sessionStorage.Create(ctx, tokenPair["refresh_token"], user.ID, time.Hour*24*30)
 	if err != nil {
-		log.Info("can not save session", logger.Err(err))
-		return nil, "", fmt.Errorf("%s: %w", op, err)
+		log.Info("failed to save refresh token", logger.Err(err))
+		return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return user, token, nil
+	return dtos.UserCredentialsDTO{
+		User:     user,
+		JWTToken: tokenPair["access_token"],
+		RtToken:  tokenPair["refresh_token"],
+	}, nil
 }
 
 func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID int64, err error) {
@@ -162,35 +172,73 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 	return user.ID, nil
 }
 
-func (a Auth) Logout(ctx context.Context, sessionToken string) error {
+func (a Auth) Logout(ctx context.Context, refreshToken string) error {
 	const op = "authService.Logout"
 	log := a.log.With(slog.String("op", op))
 
-	err := a.sessionStorage.Delete(ctx, sessionToken)
+	err := a.sessionStorage.Delete(ctx, refreshToken)
 	if err != nil {
-		log.Error("failed to delete session", logger.Err(err))
+		log.Error("failed to delete refresh token", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
 }
 
-func (a Auth) Authenticate(ctx context.Context, sessionToken string) (userID int64, err error) {
-	const op = "authService.Authenticate"
+func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.UserCredentialsDTO, error) {
+	const op = "authService.RefreshToken"
 	log := a.log.With(slog.String("op", op))
 
-	userID, err = a.sessionStorage.Get(ctx, sessionToken)
+	userID, err := a.sessionStorage.Get(ctx, rtToken)
 	if err != nil {
 		log.Error("failed to get session", logger.Err(err))
 		switch {
-		case errors.Is(err, storage.ErrSessionNotExists):
-			return 0, fmt.Errorf("%s, %w", op, ErrSessionNotExists)
+		case errors.Is(err, storage.ErrTokenNotExists):
+			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s, %w", op, ErrRefreshTokenNotExists)
 		default:
-			return 0, fmt.Errorf("%s: %w", op, err)
+			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
 		}
 	}
 
-	return userID, nil
+	userIDFromToken, err := jwt.GetUserIDFromToken(jwtToken, a.JwtCfg.AccessTokenSecret)
+	if err != nil {
+		return dtos.UserCredentialsDTO{}, err
+	}
+
+	if userIDFromToken != userID {
+		return dtos.UserCredentialsDTO{}, domain.ErrUserIDMismatch
+	}
+
+	user, err := a.usrStorage.GetUserByID(ctx, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrUserNotExists):
+			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
+		}
+
+	}
+
+	tokenPair, err := jwt.GenerateTokenPair(userID, a.JwtCfg)
+	if err != nil {
+		log.Error("failed to generate token pair", logger.Err(err))
+		return dtos.UserCredentialsDTO{}, err
+	}
+
+	// save rt token
+	err = a.sessionStorage.Create(ctx, tokenPair["refresh_token"], user.ID, time.Hour*24*30)
+	if err != nil {
+		log.Info("failed to save refresh token", logger.Err(err))
+		return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return dtos.UserCredentialsDTO{
+		User:     user,
+		JWTToken: tokenPair["access_token"],
+		RtToken:  tokenPair["refresh_token"],
+	}, nil
 }
 
 func (a Auth) CheckUserRole(ctx context.Context, userId int64, roles []userv1.Role) (bool, error) {
@@ -226,7 +274,7 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 	if err != nil {
 		log.Error("failed to get activation token", logger.Err(err))
 		switch {
-		case errors.Is(err, storage.ErrSessionNotExists):
+		case errors.Is(err, storage.ErrTokenNotExists):
 			return fmt.Errorf("%s, %w", op, ErrActivationTokenNotExists)
 		default:
 			return fmt.Errorf("%s: %w", op, err)

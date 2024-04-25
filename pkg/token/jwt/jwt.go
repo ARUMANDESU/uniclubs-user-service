@@ -1,0 +1,74 @@
+package jwt
+
+import (
+	"fmt"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	"github.com/golang-jwt/jwt/v5"
+	"time"
+)
+
+func GenerateTokenPair(userID int64, cfg config.JWTConfig) (map[string]string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	// Set claims
+	claims := token.Claims.(jwt.MapClaims)
+	claims["sub"] = 1
+	claims["user_id"] = userID
+	claims["exp"] = time.Now().Add(cfg.AccessTokenDuration).Unix()
+
+	// Generate encoded token and send it as response.
+	// The signing string should be secret (a generated UUID works too)
+	t, err := token.SignedString([]byte(cfg.AccessTokenSecret))
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken := jwt.New(jwt.SigningMethodHS256)
+	rtClaims := refreshToken.Claims.(jwt.MapClaims)
+	rtClaims["sub"] = 1
+	rtClaims["exp"] = time.Now().Add(time.Hour * 24 * 30).Unix()
+
+	rt, err := refreshToken.SignedString([]byte(cfg.RefreshTokenSecret))
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]string{
+		"access_token":  t,
+		"refresh_token": rt,
+	}, nil
+}
+
+func GetUserIDFromToken(tokenString string, secret string) (int64, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		// Return the secret used to sign the token
+		return []byte(secret), nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	// Check if the token is valid
+	if !token.Valid {
+		return 0, domain.ErrTokenIsNotValid
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, domain.ErrInvalidTokenClaims
+	}
+
+	// Extract user_id from claims
+	userID, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, domain.ErrUserIDClaimNotFound
+	}
+
+	return int64(userID), nil
+}

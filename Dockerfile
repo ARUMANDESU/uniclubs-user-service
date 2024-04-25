@@ -31,7 +31,10 @@ ENV ENV="dev"\
     RABBITMQ_QUEUE_NAME="user"\
     IMAGE_SERVICE_ADDRESS="localhost:44042"\
     IMAGE_SERVICE_TIMEOUT="3s"\
-    IMAGE_SERVICE_RETRIES_COUNT=3
+    IMAGE_SERVICE_RETRIES_COUNT=3\
+    ACCESS_TOKEN_DURATION="15m"\
+    ACCESS_TOKEN_SECRET="some_hard_secret"\
+    REFRESH_TOKEN_SECRET="more_harder_secret"
 # Expose the port your application listens on.
 EXPOSE 44044
 

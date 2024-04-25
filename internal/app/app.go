@@ -45,7 +45,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		panic(err)
 	}
 
-	authService := auth.New(log, postgres, redisStrg, redisStrg, rmq)
+	authService := auth.New(log, cfg.Jwt, postgres, redisStrg, redisStrg, rmq)
 	managementService := management.New(log, postgres, imageClient, rmq)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)

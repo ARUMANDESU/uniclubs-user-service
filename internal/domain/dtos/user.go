@@ -22,6 +22,12 @@ type ChangeRoleDTO struct {
 	Role     string
 }
 
+type UserCredentialsDTO struct {
+	User     *domain.User
+	JWTToken string
+	RtToken  string
+}
+
 func ChangeRoleToDTO(req *userv1.ChangeUserRoleRequest) *ChangeRoleDTO {
 	return &ChangeRoleDTO{
 		UserID:   req.UserId,

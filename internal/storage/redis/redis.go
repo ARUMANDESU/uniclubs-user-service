@@ -50,7 +50,7 @@ func (s Storage) Get(ctx context.Context, sessionToken string) (int64, error) {
 	val, err := s.client.Get(ctx, sessionToken).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return 0, fmt.Errorf("%s: %w", op, storage.ErrSessionNotExists)
+			return 0, fmt.Errorf("%s: %w", op, storage.ErrTokenNotExists)
 		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}

@@ -1,5 +1,9 @@
 github.com/ARUMANDESU/uniclubs-protos v0.1.10 h1:VTbddk/sOOFAWkzEO1JKU1By2F81frayMcXhoLqtOW8=
 github.com/ARUMANDESU/uniclubs-protos v0.1.10/go.mod h1:Isf2QP9zEZIGAIffCnTbDRY8A/S7lpyofaC9c5vva50=
+github.com/ARUMANDESU/uniclubs-protos v0.2.8 h1:Gdec0Bbbj3KILoUEBUBAgwH4UPpJcZLfyEHdxHemSzU=
+github.com/ARUMANDESU/uniclubs-protos v0.2.8/go.mod h1:Isf2QP9zEZIGAIffCnTbDRY8A/S7lpyofaC9c5vva50=
+github.com/ARUMANDESU/uniclubs-protos v0.3.0 h1:TuBnmzh+n8rLdtVy7ZmVWj0zTaWZh+p1ZWoxkd/3msw=
+github.com/ARUMANDESU/uniclubs-protos v0.3.0/go.mod h1:Isf2QP9zEZIGAIffCnTbDRY8A/S7lpyofaC9c5vva50=
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 h1:L/gRVlceqvL25UVaW/CKtUDjefjrs0SPonmDGUVOYP0=
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/BurntSushi/toml v1.2.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
@@ -35,6 +39,8 @@ github.com/go-ozzo/ozzo-validation v3.6.0+incompatible h1:msy24VGS42fKO9K1vLz82/
 github.com/go-ozzo/ozzo-validation v3.6.0+incompatible/go.mod h1:gsEKFIVnabGBt6mXmxK0MoFy+cZoTJY6mu5Ll3LVLBU=
 github.com/gogo/protobuf v1.3.2 h1:Ov1cvc58UF3b5XjBnZv7+opcTcQFZebYjWzi34vdm4Q=
 github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
+github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
+github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/golang-migrate/migrate/v4 v4.17.0 h1:rd40H3QXU0AA4IoLllFcEAEo9dYKRHYND2gB4p7xcaU=
 github.com/golang-migrate/migrate/v4 v4.17.0/go.mod h1:+Cp2mtLP4/aXDTKb9wmXYitdrNx2HGs45rbWAo6OsKM=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=

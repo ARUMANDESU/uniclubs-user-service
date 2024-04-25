@@ -15,6 +15,7 @@ type Config struct {
 	DatabaseDSN string        `yaml:"database_dsn" env:"DATABASE_DSN" env-required:"true"`
 	RedisURL    string        `yaml:"redis_url" env:"REDIS_URL" env-required:"true"`
 	Clients     ClientsConfig `yaml:"clients"`
+	Jwt         JWTConfig     `yaml:"jwt"`
 }
 
 type GRPC struct {
@@ -35,6 +36,12 @@ type ClientsConfig struct {
 		Timeout      time.Duration `yaml:"timeout" env:"IMAGE_SERVICE_TIMEOUT"`
 		RetriesCount int           `yaml:"retries_count" env:"IMAGE_SERVICE_RETRIES_COUNT"`
 	} `yaml:"image"`
+}
+
+type JWTConfig struct {
+	AccessTokenDuration time.Duration `yaml:"access_token_duration" env:"ACCESS_TOKEN_DURATION"`
+	AccessTokenSecret   string        `yaml:"access_token_secret" env:"ACCESS_TOKEN_SECRET"`
+	RefreshTokenSecret  string        `yaml:"refresh_token_secret" env:"REFRESH_TOKEN_SECRET"`
 }
 
 func MustLoad() *Config {
