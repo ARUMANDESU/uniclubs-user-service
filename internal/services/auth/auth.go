@@ -28,7 +28,7 @@ type Auth struct {
 }
 
 type Amqp interface {
-	Publish(ctx context.Context, routingKey string, msg any) error
+	Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error
 }
 
 type UserStorage interface {
@@ -163,7 +163,7 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 		Token:     token,
 	}
 
-	err = a.amqp.Publish(ctx, rabbitmq.UserRegisteredEventRoutingKey, msg)
+	err = a.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserRegisteredEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish", logger.Err(err))
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -321,7 +321,7 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 		AvatarURL: user.AvatarURL,
 	}
 
-	err = a.amqp.Publish(ctx, rabbitmq.UserActivatedEventRoutingKey, msg)
+	err = a.amqp.Publish(ctx, "", rabbitmq.UserActivatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user.activated", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)

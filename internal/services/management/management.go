@@ -28,7 +28,7 @@ type Management struct {
 }
 
 type Amqp interface {
-	Publish(ctx context.Context, routingKey string, msg any) error
+	Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error
 }
 
 type UserStorage interface {
@@ -97,7 +97,7 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 		AvatarURL: &user.AvatarURL,
 	}
 
-	err = m.amqp.Publish(ctx, rabbitmq.UserUpdatedEventRoutingKey, msg)
+	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)
@@ -122,7 +122,7 @@ func (m Management) DeleteUser(ctx context.Context, userID int64) error {
 		}
 	}
 
-	err = m.amqp.Publish(ctx, rabbitmq.UserDeletedEventRoutingKey, userID)
+	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserDeletedEventRoutingKey, userID)
 	if err != nil {
 		log.Error("failed to publish user deleted event", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)
@@ -188,7 +188,7 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 		AvatarURL: &user.AvatarURL,
 	}
 
-	err = m.amqp.Publish(ctx, rabbitmq.UserUpdatedEventRoutingKey, msg)
+	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -248,14 +248,14 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 	}
 
 	msg := struct {
-		ID      int64  `json:"id"`
+		ID      int64  `json:"user_id"`
 		Message string `json:"message"`
 	}{
 		ID:      user.ID,
 		Message: fmt.Sprintf("Your global role was updated: %s", dto.Role),
 	}
 
-	err = m.amqp.Publish(ctx, rabbitmq.PushNotificationRoutingKey, msg)
+	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.PushNotificationRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish push notification", logger.Err(err))
 		return fmt.Errorf("%s: %w", op, err)

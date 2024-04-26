@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	exchangeName                  = "user-exchange"
+	UserExchangeName              = "user-exchange"
 	PushNotificationRoutingKey    = "user.notification.push"
 	UserRegisteredEventRoutingKey = "user.notification.email.registered"
 	UserUpdatedEventRoutingKey    = "user.event.updated"
@@ -38,7 +38,7 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 	}
 
 	err = ch.ExchangeDeclare(
-		exchangeName,
+		UserExchangeName,
 		"topic",
 		true,
 		false,
@@ -57,7 +57,7 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 	}, nil
 }
 
-func (r *Rabbitmq) Publish(ctx context.Context, routingKey string, msg any) error {
+func (r *Rabbitmq) Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error {
 	const op = "Rabbitmq.Publish"
 
 	bytes, err := json.Marshal(msg)
