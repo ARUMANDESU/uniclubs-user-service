@@ -200,13 +200,9 @@ func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.
 		}
 	}
 
-	userIDFromToken, err := jwt.GetUserIDFromToken(jwtToken, a.JwtCfg.AccessTokenSecret)
+	_, err = jwt.GetUserIDFromToken(jwtToken, a.JwtCfg.AccessTokenSecret)
 	if err != nil && !errors.Is(err, domain.ErrTokenIsExpired) {
 		return dtos.UserCredentialsDTO{}, err
-	}
-
-	if userIDFromToken != userID {
-		return dtos.UserCredentialsDTO{}, domain.ErrUserIDMismatch
 	}
 
 	user, err := a.usrStorage.GetUserByID(ctx, userID)
