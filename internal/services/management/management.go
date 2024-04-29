@@ -4,31 +4,33 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	imagev1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/filestorage"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"log/slog"
+	"time"
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserNotExist       = errors.New("user does not exist")
-	ErrUserNonAuthorized  = errors.New("user is not authorized")
+	ErrUserNotExist      = errors.New("user does not exist")
+	ErrUserNonAuthorized = errors.New("user is not authorized")
 )
 
 type Management struct {
-	log         *slog.Logger
-	usrStorage  UserStorage
-	imageClient *image.Client
-	amqp        Amqp
+	log          *slog.Logger
+	usrStorage   UserStorage
+	imageStorage ImageStorage
+	amqp         Amqp
 }
 
 type Amqp interface {
 	Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error
+}
+
+type ImageStorage interface {
+	UploadImage(ctx context.Context, image []byte, filename string) (string, error)
 }
 
 type UserStorage interface {
@@ -39,12 +41,12 @@ type UserStorage interface {
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
 }
 
-func New(log *slog.Logger, storage UserStorage, client *image.Client, amqp Amqp) *Management {
+func New(log *slog.Logger, storage UserStorage, imageStorage ImageStorage, amqp Amqp) *Management {
 	return &Management{
-		log:         log,
-		usrStorage:  storage,
-		imageClient: client,
-		amqp:        amqp,
+		log:          log,
+		usrStorage:   storage,
+		imageStorage: imageStorage,
+		amqp:         amqp,
 	}
 }
 
@@ -114,7 +116,6 @@ func (m Management) DeleteUser(ctx context.Context, userID int64) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user not found", logger.Err(err))
 			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
 		default:
 			log.Error("failed to delete user", logger.Err(err))
@@ -161,12 +162,12 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 		}
 	}
 
-	res, err := m.imageClient.UploadImage(ctx, &imagev1.UploadImageRequest{Image: image, Filename: user.Barcode})
+	url, err := m.imageStorage.UploadImage(ctx, image, user.Barcode)
 	if err != nil {
 		log.Error("failed to upload avatar", logger.Err(err))
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	user.AvatarURL = res.GetImageUrl()
+	user.AvatarURL = url
 
 	err = m.usrStorage.UpdateUser(ctx, user)
 	if err != nil {
@@ -247,12 +248,16 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	msg := struct {
-		ID      int64  `json:"user_id"`
-		Message string `json:"message"`
-	}{
-		ID:      user.ID,
-		Message: fmt.Sprintf("Your global role was updated: %s", dto.Role),
+	msg := domain.Notification{
+		UserID:      target.ID,
+		Message:     fmt.Sprintf("Your role has been changed to %s", dto.Role),
+		Description: fmt.Sprintf("Your role has been changed to %s by %s", dto.Role, user.FirstName+" "+user.LastName),
+		Status:      "NEW",
+		Severity:    "INFO",
+		Source:      "user-service",
+		DisplayType: "INBOX",
+		CreatedAt:   time.Now().String(),
+		ExpiryAt:    "",
 	}
 
 	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.PushNotificationRoutingKey, msg)

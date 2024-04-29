@@ -5,6 +5,7 @@ import (
 	"fmt"
 	imagev1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/filestorage"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	grpclog "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	grpcretry "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
 	"google.golang.org/grpc"
@@ -57,4 +58,20 @@ func InterceptorLogger(l *slog.Logger) grpclog.Logger {
 	return grpclog.LoggerFunc(func(ctx context.Context, lvl grpclog.Level, msg string, fields ...any) {
 		l.Log(ctx, slog.Level(lvl), msg, fields...)
 	})
+}
+
+func (c *Client) UploadImage(ctx context.Context, image []byte, filename string) (string, error) {
+	const op = "image.Client.UploadImage"
+	log := c.log.With(slog.String("op", op))
+
+	resp, err := c.ImageStorageClient.UploadImage(ctx, &imagev1.UploadImageRequest{
+		Image:    image,
+		Filename: filename,
+	})
+	if err != nil {
+		log.Error("failed to upload image", logger.Err(err))
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return resp.GetImageUrl(), nil
 }

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type AuthServiceTestSuite struct {
+type Suite struct {
 	Auth *Auth
 	*MockUserStorage
 	*MockTokenStorage
@@ -75,7 +75,7 @@ func (m *MockAmqp) Publish(ctx context.Context, exchangeName string, routingKey 
 	return args.Error(0)
 }
 
-func Setup(t *testing.T) *AuthServiceTestSuite {
+func Setup(t *testing.T) *Suite {
 	t.Helper()
 	mockUserStorage := new(MockUserStorage)
 	mockTokenStorage := new(MockTokenStorage)
@@ -87,7 +87,7 @@ func Setup(t *testing.T) *AuthServiceTestSuite {
 		RefreshTokenSecret:  "secret",
 	}
 
-	return &AuthServiceTestSuite{
+	return &Suite{
 		Auth:             New(logger, jwtCfg, mockUserStorage, mockTokenStorage, mockTokenStorage, mockAmqp),
 		MockUserStorage:  mockUserStorage,
 		MockTokenStorage: mockTokenStorage,

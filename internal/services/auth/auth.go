@@ -191,11 +191,11 @@ func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.
 
 	userID, err := a.sessionStorage.Get(ctx, rtToken)
 	if err != nil {
-		log.Error("failed to get session", logger.Err(err))
 		switch {
 		case errors.Is(err, storage.ErrTokenNotExists):
 			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s, %w", op, ErrRefreshTokenNotExists)
 		default:
+			log.Error("failed to get session", logger.Err(err))
 			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
 		}
 	}
