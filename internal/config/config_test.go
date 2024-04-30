@@ -17,7 +17,7 @@ func TestLoadByPath_HappyPath(t *testing.T) {
 		os.Remove(fileName)
 	})
 
-	cfg, err := LoadByPath(fileName)
+	cfg, err := loadByPath(fileName)
 
 	require.NoError(t, err)
 	assertConfig(t, cfg)
@@ -29,7 +29,7 @@ func TestLoadFromEnv_HappyPath(t *testing.T) {
 		unsetEnvVariables()
 	})
 
-	cfg := MustLoadFromEnv()
+	cfg := mustLoadFromEnv()
 
 	assertConfig(t, cfg)
 }
@@ -38,7 +38,7 @@ func TestLoadFromEnv_FailPath(t *testing.T) {
 	//setEnvVariables()
 
 	require.Panics(t, func() {
-		MustLoadFromEnv()
+		mustLoadFromEnv()
 	})
 
 }
@@ -88,7 +88,7 @@ func TestMustLoad_FromEnv_FailPath(t *testing.T) {
 }
 
 func TestLoadByPath_FailPath_WrongPath(t *testing.T) {
-	_, err := LoadByPath("./some/wrong/path")
+	_, err := loadByPath("./some/wrong/path")
 
 	require.Error(t, err, "have to return error")
 }
@@ -110,12 +110,7 @@ rabbitmq:
   user: "admin"
   password: "admin"
   host: "localhost"
-  port: "5672"
-clients:
-  image:
-    address: "image_service_address"
-    timeout: "3s"
-    retries_count: 3`)
+  port: "5672"`)
 
 	_, err = f.Write(configData)
 	if err != nil {
@@ -135,9 +130,6 @@ func setEnvVariables() {
 	os.Setenv("RABBITMQ_PASSWORD", "admin")
 	os.Setenv("RABBITMQ_HOST", "localhost")
 	os.Setenv("RABBITMQ_PORT", "5672")
-	os.Setenv("IMAGE_SERVICE_ADDRESS", "image_service_address")
-	os.Setenv("IMAGE_SERVICE_TIMEOUT", "3s")
-	os.Setenv("IMAGE_SERVICE_RETRIES_COUNT", "3")
 }
 
 func assertConfig(t *testing.T, cfg *Config) {
@@ -152,9 +144,6 @@ func assertConfig(t *testing.T, cfg *Config) {
 	assert.Equal(t, "admin", cfg.Rabbitmq.Password)
 	assert.Equal(t, "localhost", cfg.Rabbitmq.Host)
 	assert.Equal(t, "5672", cfg.Rabbitmq.Port)
-	assert.Equal(t, "image_service_address", cfg.Clients.Image.Address)
-	assert.Equal(t, 3*time.Second, cfg.Clients.Image.Timeout)
-	assert.Equal(t, 3, cfg.Clients.Image.RetriesCount)
 }
 
 func unsetEnvVariables() {
@@ -167,7 +156,4 @@ func unsetEnvVariables() {
 	os.Unsetenv("RABBITMQ_PASSWORD")
 	os.Unsetenv("RABBITMQ_HOST")
 	os.Unsetenv("RABBITMQ_PORT")
-	os.Unsetenv("IMAGE_SERVICE_ADDRESS")
-	os.Unsetenv("IMAGE_SERVICE_TIMEOUT")
-	os.Unsetenv("IMAGE_SERVICE_RETRIES_COUNT")
 }

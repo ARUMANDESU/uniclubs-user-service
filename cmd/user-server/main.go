@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/app"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/joho/godotenv"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -16,17 +20,33 @@ const (
 )
 
 func main() {
+	err := godotenv.Load(".env.local")
+	if err != nil {
+		panic(err)
+	}
 
 	cfg := config.MustLoad()
-
 	log := setupLogger(cfg.Env)
+	log.Debug("config loaded", slog.Any("config", cfg))
+
+	awsCfg, err := awsConfig.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Error("error loading aws config", logger.Err(err))
+		panic(err)
+	}
+	retrieve, err := awsCfg.Credentials.Retrieve(context.Background())
+	if err != nil {
+		return
+	}
+
+	log.Debug("aws config loaded", awsCfg.Region, retrieve)
 
 	log.Info("starting application",
 		slog.String("env", cfg.Env),
 		slog.Int("port", cfg.GRPC.Port),
 	)
 
-	application := app.New(log, cfg)
+	application := app.New(log, cfg, awsCfg)
 	go application.GRPCSrv.MustRun()
 
 	stop := make(chan os.Signal, 1)

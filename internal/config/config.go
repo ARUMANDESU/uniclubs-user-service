@@ -9,13 +9,13 @@ import (
 )
 
 type Config struct {
-	Env         string        `yaml:"env" env:"ENV" env-default:"local"`
-	GRPC        GRPC          `yaml:"grpc"`
-	Rabbitmq    Rabbitmq      `yaml:"rabbitmq"`
-	DatabaseDSN string        `yaml:"database_dsn" env:"DATABASE_DSN" env-required:"true"`
-	RedisURL    string        `yaml:"redis_url" env:"REDIS_URL" env-required:"true"`
-	Clients     ClientsConfig `yaml:"clients"`
-	Jwt         JWTConfig     `yaml:"jwt"`
+	Env         string    `yaml:"env" env:"ENV" env-default:"local"`
+	GRPC        GRPC      `yaml:"grpc"`
+	Rabbitmq    Rabbitmq  `yaml:"rabbitmq"`
+	DatabaseDSN string    `yaml:"database_dsn" env:"DATABASE_DSN" env-required:"true"`
+	RedisURL    string    `yaml:"redis_url" env:"REDIS_URL" env-required:"true"`
+	Jwt         JWTConfig `yaml:"jwt"`
+	AWS         AWS       `yaml:"aws"`
 }
 
 type GRPC struct {
@@ -23,19 +23,16 @@ type GRPC struct {
 	Timeout time.Duration `yaml:"timeout" env:"GRPC_TIMEOUT"`
 }
 
+type AWS struct {
+	Region string `yaml:"region" env:"AWS_REGION"`
+	Bucket string `yaml:"bucket" env:"AWS_S3_BUCKET"`
+}
+
 type Rabbitmq struct {
 	User     string `yaml:"user" env:"RABBITMQ_USER"`
 	Password string `yaml:"password" env:"RABBITMQ_PASSWORD"`
 	Host     string `yaml:"host" env:"RABBITMQ_HOST"`
 	Port     string `yaml:"port" env:"RABBITMQ_PORT"`
-}
-
-type ClientsConfig struct {
-	Image struct {
-		Address      string        `yaml:"address" env:"IMAGE_SERVICE_ADDRESS"`
-		Timeout      time.Duration `yaml:"timeout" env:"IMAGE_SERVICE_TIMEOUT"`
-		RetriesCount int           `yaml:"retries_count" env:"IMAGE_SERVICE_RETRIES_COUNT"`
-	} `yaml:"image"`
 }
 
 type JWTConfig struct {
@@ -47,14 +44,14 @@ type JWTConfig struct {
 func MustLoad() *Config {
 	path := fetchConfigPath()
 	if path == "" {
-		return MustLoadFromEnv()
+		return mustLoadFromEnv()
 	}
 
-	return MustLoadByPath(path)
+	return mustLoadByPath(path)
 }
 
-func MustLoadByPath(configPath string) *Config {
-	cfg, err := LoadByPath(configPath)
+func mustLoadByPath(configPath string) *Config {
+	cfg, err := loadByPath(configPath)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +59,7 @@ func MustLoadByPath(configPath string) *Config {
 	return cfg
 }
 
-func LoadByPath(configPath string) (*Config, error) {
+func loadByPath(configPath string) (*Config, error) {
 	var cfg Config
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -77,7 +74,7 @@ func LoadByPath(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
-func MustLoadFromEnv() *Config {
+func mustLoadFromEnv() *Config {
 	var cfg Config
 
 	if err := cleanenv.ReadEnv(&cfg); err != nil {

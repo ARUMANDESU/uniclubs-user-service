@@ -5,9 +5,7 @@ package mocks
 import (
 	context "context"
 
-	domain "github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	dtos "github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
-
 	mock "github.com/stretchr/testify/mock"
 
 	uniclubs_user_service_v1_userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
@@ -73,63 +71,6 @@ func (_c *Auth_ActivateUser_Call) RunAndReturn(run func(context.Context, string)
 	return _c
 }
 
-// Authenticate provides a mock function with given fields: ctx, sessionToken
-func (_m *Auth) Authenticate(ctx context.Context, sessionToken string) (int64, error) {
-	ret := _m.Called(ctx, sessionToken)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Authenticate")
-	}
-
-	var r0 int64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (int64, error)); ok {
-		return rf(ctx, sessionToken)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) int64); ok {
-		r0 = rf(ctx, sessionToken)
-	} else {
-		r0 = ret.Get(0).(int64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, sessionToken)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// Auth_Authenticate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Authenticate'
-type Auth_Authenticate_Call struct {
-	*mock.Call
-}
-
-// Authenticate is a helper method to define mock.On call
-//   - ctx context.Context
-//   - sessionToken string
-func (_e *Auth_Expecter) Authenticate(ctx interface{}, sessionToken interface{}) *Auth_Authenticate_Call {
-	return &Auth_Authenticate_Call{Call: _e.mock.On("Authenticate", ctx, sessionToken)}
-}
-
-func (_c *Auth_Authenticate_Call) Run(run func(ctx context.Context, sessionToken string)) *Auth_Authenticate_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *Auth_Authenticate_Call) Return(userID int64, err error) *Auth_Authenticate_Call {
-	_c.Call.Return(userID, err)
-	return _c
-}
-
-func (_c *Auth_Authenticate_Call) RunAndReturn(run func(context.Context, string) (int64, error)) *Auth_Authenticate_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CheckUserRole provides a mock function with given fields: ctx, userId, roles
 func (_m *Auth) CheckUserRole(ctx context.Context, userId int64, roles []uniclubs_user_service_v1_userv1.Role) (bool, error) {
 	ret := _m.Called(ctx, userId, roles)
@@ -189,40 +130,31 @@ func (_c *Auth_CheckUserRole_Call) RunAndReturn(run func(context.Context, int64,
 }
 
 // Login provides a mock function with given fields: ctx, email, password
-func (_m *Auth) Login(ctx context.Context, email string, password string) (*domain.User, string, error) {
+func (_m *Auth) Login(ctx context.Context, email string, password string) (dtos.UserCredentialsDTO, error) {
 	ret := _m.Called(ctx, email, password)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Login")
 	}
 
-	var r0 *domain.User
-	var r1 string
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*domain.User, string, error)); ok {
+	var r0 dtos.UserCredentialsDTO
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (dtos.UserCredentialsDTO, error)); ok {
 		return rf(ctx, email, password)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) *domain.User); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) dtos.UserCredentialsDTO); ok {
 		r0 = rf(ctx, email, password)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.User)
-		}
+		r0 = ret.Get(0).(dtos.UserCredentialsDTO)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) string); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
 		r1 = rf(ctx, email, password)
 	} else {
-		r1 = ret.Get(1).(string)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, string) error); ok {
-		r2 = rf(ctx, email, password)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // Auth_Login_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Login'
@@ -245,19 +177,19 @@ func (_c *Auth_Login_Call) Run(run func(ctx context.Context, email string, passw
 	return _c
 }
 
-func (_c *Auth_Login_Call) Return(_a0 *domain.User, token string, err error) *Auth_Login_Call {
-	_c.Call.Return(_a0, token, err)
+func (_c *Auth_Login_Call) Return(dto dtos.UserCredentialsDTO, err error) *Auth_Login_Call {
+	_c.Call.Return(dto, err)
 	return _c
 }
 
-func (_c *Auth_Login_Call) RunAndReturn(run func(context.Context, string, string) (*domain.User, string, error)) *Auth_Login_Call {
+func (_c *Auth_Login_Call) RunAndReturn(run func(context.Context, string, string) (dtos.UserCredentialsDTO, error)) *Auth_Login_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Logout provides a mock function with given fields: ctx, sessionToken
-func (_m *Auth) Logout(ctx context.Context, sessionToken string) error {
-	ret := _m.Called(ctx, sessionToken)
+// Logout provides a mock function with given fields: ctx, refreshToken
+func (_m *Auth) Logout(ctx context.Context, refreshToken string) error {
+	ret := _m.Called(ctx, refreshToken)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Logout")
@@ -265,7 +197,7 @@ func (_m *Auth) Logout(ctx context.Context, sessionToken string) error {
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, sessionToken)
+		r0 = rf(ctx, refreshToken)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -280,12 +212,12 @@ type Auth_Logout_Call struct {
 
 // Logout is a helper method to define mock.On call
 //   - ctx context.Context
-//   - sessionToken string
-func (_e *Auth_Expecter) Logout(ctx interface{}, sessionToken interface{}) *Auth_Logout_Call {
-	return &Auth_Logout_Call{Call: _e.mock.On("Logout", ctx, sessionToken)}
+//   - refreshToken string
+func (_e *Auth_Expecter) Logout(ctx interface{}, refreshToken interface{}) *Auth_Logout_Call {
+	return &Auth_Logout_Call{Call: _e.mock.On("Logout", ctx, refreshToken)}
 }
 
-func (_c *Auth_Logout_Call) Run(run func(ctx context.Context, sessionToken string)) *Auth_Logout_Call {
+func (_c *Auth_Logout_Call) Run(run func(ctx context.Context, refreshToken string)) *Auth_Logout_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
@@ -298,6 +230,64 @@ func (_c *Auth_Logout_Call) Return(_a0 error) *Auth_Logout_Call {
 }
 
 func (_c *Auth_Logout_Call) RunAndReturn(run func(context.Context, string) error) *Auth_Logout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RefreshToken provides a mock function with given fields: ctx, rtToken, jwtToken
+func (_m *Auth) RefreshToken(ctx context.Context, rtToken string, jwtToken string) (dtos.UserCredentialsDTO, error) {
+	ret := _m.Called(ctx, rtToken, jwtToken)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshToken")
+	}
+
+	var r0 dtos.UserCredentialsDTO
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (dtos.UserCredentialsDTO, error)); ok {
+		return rf(ctx, rtToken, jwtToken)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) dtos.UserCredentialsDTO); ok {
+		r0 = rf(ctx, rtToken, jwtToken)
+	} else {
+		r0 = ret.Get(0).(dtos.UserCredentialsDTO)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, rtToken, jwtToken)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Auth_RefreshToken_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshToken'
+type Auth_RefreshToken_Call struct {
+	*mock.Call
+}
+
+// RefreshToken is a helper method to define mock.On call
+//   - ctx context.Context
+//   - rtToken string
+//   - jwtToken string
+func (_e *Auth_Expecter) RefreshToken(ctx interface{}, rtToken interface{}, jwtToken interface{}) *Auth_RefreshToken_Call {
+	return &Auth_RefreshToken_Call{Call: _e.mock.On("RefreshToken", ctx, rtToken, jwtToken)}
+}
+
+func (_c *Auth_RefreshToken_Call) Run(run func(ctx context.Context, rtToken string, jwtToken string)) *Auth_RefreshToken_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Auth_RefreshToken_Call) Return(_a0 dtos.UserCredentialsDTO, _a1 error) *Auth_RefreshToken_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Auth_RefreshToken_Call) RunAndReturn(run func(context.Context, string, string) (dtos.UserCredentialsDTO, error)) *Auth_RefreshToken_Call {
 	_c.Call.Return(run)
 	return _c
 }

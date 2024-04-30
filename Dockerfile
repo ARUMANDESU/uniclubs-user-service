@@ -23,18 +23,16 @@ ENV ENV="dev"\
     REDIS_URL="redis://redis"\
     GRPC_PORT=44044\
     GRPC_TIMEOUT=1h\
-    RABBITMQ_USER="dsadsi21neoU@N!D"\
-    RABBITMQ_PASSWORD="Y98213KQSNDKJASKDLJNka"\
+    RABBITMQ_USER="admin"\
+    RABBITMQ_PASSWORD="admin"\
     RABBITMQ_HOST="localhost"\
     RABBITMQ_PORT="5672"\
-    RABBITMQ_EXCHANGE_NAME="user_events"\
-    RABBITMQ_QUEUE_NAME="user"\
-    IMAGE_SERVICE_ADDRESS="localhost:44042"\
-    IMAGE_SERVICE_TIMEOUT="3s"\
-    IMAGE_SERVICE_RETRIES_COUNT=3\
     ACCESS_TOKEN_DURATION="15m"\
     ACCESS_TOKEN_SECRET="some_hard_secret"\
     REFRESH_TOKEN_SECRET="more_harder_secret"
+    AWS_REGION=""\
+    AWS_ACCESS_KEY_ID=""\
+    AWS_SECRET_ACCESS_KEY=""
 # Expose the port your application listens on.
 EXPOSE 44044
 

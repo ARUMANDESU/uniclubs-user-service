@@ -1,9 +1,8 @@
 package app
 
 import (
-	"context"
 	grpcapp "github.com/ARUMANDESU/uniclubs-user-service/internal/app/grpc"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/image"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/awsS3"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
@@ -11,6 +10,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/postgresql"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/redis"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"log/slog"
 )
 
@@ -18,7 +18,7 @@ type App struct {
 	GRPCSrv *grpcapp.App
 }
 
-func New(log *slog.Logger, cfg *config.Config) *App {
+func New(log *slog.Logger, cfg *config.Config, awsCfg aws.Config) *App {
 	const op = "App.New"
 	l := log.With(slog.String("op", op))
 
@@ -39,14 +39,14 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		panic(err)
 	}
 
-	imageClient, err := image.New(context.Background(), log, cfg.Clients)
+	awsS3Client, err := awsS3.New(awsCfg, cfg.AWS)
 	if err != nil {
-		l.Error("failed to connect to imagestorage service", logger.Err(err))
+		l.Error("failed to create aws s3 client", logger.Err(err))
 		panic(err)
 	}
 
 	authService := auth.New(log, cfg.Jwt, postgres, redisStrg, redisStrg, rmq)
-	managementService := management.New(log, postgres, imageClient, rmq)
+	managementService := management.New(log, postgres, awsS3Client, rmq)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
 
