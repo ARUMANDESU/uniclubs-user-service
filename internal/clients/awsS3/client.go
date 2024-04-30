@@ -28,6 +28,7 @@ func New(awsCfg aws.Config, cfg config.AWS) (*Client, error) {
 }
 
 func (c *Client) UploadImage(ctx context.Context, image []byte, filename string) (string, error) {
+
 	result, err := c.uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(c.cfg.Bucket),
 		Key:    aws.String(filename),

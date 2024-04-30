@@ -8,6 +8,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
+	imageUtils "github.com/ARUMANDESU/uniclubs-user-service/pkg/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"log/slog"
 	"time"
@@ -162,7 +163,17 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 		}
 	}
 
-	url, err := m.imageStorage.UploadImage(ctx, image, user.Barcode)
+	compressImage, filename, err := imageUtils.CompressImage(image, 75)
+	if err != nil {
+		log.Error("failed to compress image", logger.Err(err))
+		return nil, err
+	}
+
+	log.Debug("image compressed", slog.String("filename", filename))
+	imageCtx, cancel := context.WithTimeout(ctx, time.Second*5) // 5 minutes, adjust as needed
+	defer cancel()
+
+	url, err := m.imageStorage.UploadImage(imageCtx, compressImage, filename)
 	if err != nil {
 		log.Error("failed to upload avatar", logger.Err(err))
 		return nil, fmt.Errorf("%s: %w", op, err)
