@@ -27,19 +27,12 @@ func main() {
 
 	cfg := config.MustLoad()
 	log := setupLogger(cfg.Env)
-	log.Debug("config loaded", slog.Any("config", cfg))
 
 	awsCfg, err := awsConfig.LoadDefaultConfig(context.Background())
 	if err != nil {
 		log.Error("error loading aws config", logger.Err(err))
 		panic(err)
 	}
-	retrieve, err := awsCfg.Credentials.Retrieve(context.Background())
-	if err != nil {
-		return
-	}
-
-	log.Debug("aws config loaded", awsCfg.Region, retrieve)
 
 	log.Info("starting application",
 		slog.String("env", cfg.Env),

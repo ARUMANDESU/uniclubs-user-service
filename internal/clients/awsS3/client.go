@@ -41,3 +41,15 @@ func (c *Client) UploadImage(ctx context.Context, image []byte, filename string)
 
 	return result.Location, nil
 }
+
+func (c *Client) DeleteImage(ctx context.Context, filename string) error {
+	_, err := c.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(c.cfg.Bucket),
+		Key:    aws.String(filename),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

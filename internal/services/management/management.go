@@ -11,6 +11,7 @@ import (
 	imageUtils "github.com/ARUMANDESU/uniclubs-user-service/pkg/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"log/slog"
+	"path"
 	"time"
 )
 
@@ -32,6 +33,7 @@ type Amqp interface {
 
 type ImageStorage interface {
 	UploadImage(ctx context.Context, image []byte, filename string) (string, error)
+	DeleteImage(ctx context.Context, filename string) error
 }
 
 type UserStorage interface {
@@ -163,14 +165,24 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 		}
 	}
 
+	// Delete previous avatar
+	if user.AvatarURL != "" {
+		// path.Base returns the last element of the path: object key
+		err = m.imageStorage.DeleteImage(ctx, path.Base(user.AvatarURL))
+		if err != nil {
+			log.Error("failed to delete previous avatar", logger.Err(err))
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	// Compress image
 	compressImage, filename, err := imageUtils.CompressImage(image, 75)
 	if err != nil {
 		log.Error("failed to compress image", logger.Err(err))
 		return nil, err
 	}
 
-	log.Debug("image compressed", slog.String("filename", filename))
-	imageCtx, cancel := context.WithTimeout(ctx, time.Second*5) // 5 minutes, adjust as needed
+	imageCtx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
 	url, err := m.imageStorage.UploadImage(imageCtx, compressImage, filename)

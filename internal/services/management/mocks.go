@@ -69,6 +69,11 @@ func (m *MockImageStorage) UploadImage(ctx context.Context, image []byte, filena
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockImageStorage) DeleteImage(ctx context.Context, filename string) error {
+	args := m.Called(ctx, filename)
+	return args.Error(0)
+}
+
 type MockAmqp struct {
 	mock.Mock
 }
