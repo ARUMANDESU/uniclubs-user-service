@@ -6,8 +6,6 @@ on:
   pull_request:
     branches: [ "dev" ]
 
-env:
-  LATEST_TAGS: arumandesu/user-service:latest,arumandesu/user-service:$(date +%s)
 
 jobs:
   docker:
@@ -36,4 +34,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.LATEST_TAGS }}
+          tags: arumandesu/user-service:latest,arumandesu/user-service:$(date +%s)
