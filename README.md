@@ -1,7 +1,8 @@
 # UMS User Service
 
 ## Overview
-This service is part of the Univercity Club Management application, focusing on user management and authentication. It handles operations such as user registration, authentication, role management, and more.
+This service is part of the University Club Management application, focusing on user management and authentication.
+It handles operations such as user registration, authentication, role management, and more.
 
 ## Features
 - User Registration
@@ -48,34 +49,46 @@ Before running the service, you need to set up the database and apply the necess
    - Replace `username` and `password` with your database credentials.
 
 ### Configuration
-The Uniclubs User Service requires a configuration file to specify various settings like database connections, and service-specific parameters. Depending on your environment (development, test, or production), different configurations may be needed.
-
-#### Configuration Files
-- `dev.yaml`: Contains configuration for the development environment.
-- `test.yaml`: Used for the test environment.
-- `local.yaml`: Configuration for local development.
+The Uniclubs User Service requires a configuration file to specify various settings like database connections,
+and service-specific parameters. 
+Depending on your environment (development, test, or production), different configurations may be needed.
 
 #### Setting Up Configuration
-1. Choose the appropriate configuration file based on your environment.
-2. Update the file with your specific settings, such as database connection strings, port numbers, and any third-party service credentials.
-3. Ensure the application has access to this configuration file at runtime, either by placing it in the expected directory or setting an environment variable to its path.
-
-#### Example Configuration
-Here's an example of what the configuration file might look like (refer to `dev.yaml`, `test.yaml`, or `local.yaml` for full details):
-
-```yaml
+```dotenv
 # Example configuration snippet
-env: "local"
-database_dsn: "postgresql://<user>:<password>@localhost:5432/<database_name>"
-redis_url: "redis://:@localhost:6379"
-grpc:
-  port: 44044
-  timeout: 1h
+ENV=dev
+# Database Configuration
+DATABASE_DSN=postgresql://postgres:password@172.17.0.1:5432/uniclubs_user_service
+REDIS_URL=redis://:@localhost:6379
+# Server Configuration
+GRPC_PORT=44044
+GRPC_TIMEOUT=1h
+# RabbitMQ Configuration
+RABBITMQ_USER=user
+RABBITMQ_PASSWORD=password
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+# JWT Configuration
+ACCESS_TOKEN_DURATION=15m
+ACCESS_TOKEN_SECRET=hart_secret_key
+REFRESH_TOKEN_SECRET=very_hard_secret_key
+# AWS S3 Configuration
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=access_key_id
+AWS_SECRET_ACCESS_KEY=secret_access_key
+AWS_S3_BUCKET=bucket_name
 ```
 
 ### Running the Service
 After setting up the database and configuring the service, you can run it as follows:
   ```bash
-  go run cmd/user-server/main.go --config=<path to the config file>
+  go run cmd/user-server/main.go
+  ```
+
+Or use the provided Taskfile to run the service:
+  ```bash
+  task run:enviroment
+  #or
+  task env
   ```
 
