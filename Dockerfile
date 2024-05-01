@@ -30,9 +30,11 @@ ENV ENV="dev"\
     ACCESS_TOKEN_DURATION="15m"\
     ACCESS_TOKEN_SECRET="some_hard_secret"\
     REFRESH_TOKEN_SECRET="more_harder_secret"
-    AWS_REGION=""\
-    AWS_ACCESS_KEY_ID=""\
-    AWS_SECRET_ACCESS_KEY=""
+    AWS_REGION="us-east-1"\
+    AWS_ACCESS_KEY_ID="access_key_id"\
+    AWS_SECRET_ACCESS_KEY="secret_access_key"\
+    AWS_S3_BUCKET="bucket_name"
+
 # Expose the port your application listens on.
 EXPOSE 44044
 
