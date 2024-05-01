@@ -22,7 +22,8 @@ const (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		panic(err)
+		log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		log.Error("error loading .env file")
 	}
 
 	cfg := config.MustLoad()
