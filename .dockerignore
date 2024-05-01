@@ -1,3 +1,7 @@
 .gitignore
 .idea
 .git
+.env.*
+.env
+tests
+.github

@@ -20,7 +20,7 @@ const (
 )
 
 func main() {
-	err := godotenv.Load(".env.local")
+	err := godotenv.Load()
 	if err != nil {
 		panic(err)
 	}
