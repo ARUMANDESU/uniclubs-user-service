@@ -33,6 +33,18 @@ func New(redisURL string) (*Storage, error) {
 	return &Storage{client: client}, err
 }
 
+func (s Storage) Close() error {
+	const op = "storage.redis.close"
+
+	err := s.client.Close()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+
+}
+
 func (s Storage) Create(ctx context.Context, sessionToken string, userID int64, duration time.Duration) error {
 	const op = "storage.redis.Create"
 

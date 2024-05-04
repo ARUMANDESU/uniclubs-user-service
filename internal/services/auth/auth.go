@@ -72,25 +72,23 @@ func New(
 }
 
 func (a Auth) Login(ctx context.Context, email string, password string) (dtos.UserCredentialsDTO, error) {
-	const op = "authService.Login"
+	const op = "service.auth.login"
 	log := a.log.With(slog.String("op", op))
 
 	user, err := a.usrStorage.GetUserByEmail(ctx, email)
 	if err != nil {
-
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user does not exists", logger.Err(err))
-			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return dtos.UserCredentialsDTO{}, ErrUserNotExist
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
+			return dtos.UserCredentialsDTO{}, err
 		}
-
 	}
+
 	// compare password and hash from db
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
-		return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+		return dtos.UserCredentialsDTO{}, ErrInvalidCredentials
 	}
 
 	// Generate a pair of Access and Refresh tokens
@@ -104,7 +102,7 @@ func (a Auth) Login(ctx context.Context, email string, password string) (dtos.Us
 	err = a.sessionStorage.Create(ctx, tokenPair["refresh_token"], user.ID, time.Hour*24*30)
 	if err != nil {
 		log.Info("failed to save refresh token", logger.Err(err))
-		return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
+		return dtos.UserCredentialsDTO{}, err
 	}
 
 	return dtos.UserCredentialsDTO{
@@ -115,8 +113,7 @@ func (a Auth) Login(ctx context.Context, email string, password string) (dtos.Us
 }
 
 func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID int64, err error) {
-	const op = "authService.Register"
-
+	const op = "service.auth.register"
 	log := a.log.With(slog.String("op", op))
 
 	user := dto.ToDomain()
@@ -124,7 +121,6 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 	user.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Error("failed to generate password hash", logger.Err(err))
-
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -132,9 +128,7 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserExists):
-			log.Error("user already exists", logger.Err(err))
 			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
-
 		default:
 			log.Error("failed to save user", logger.Err(err))
 			return 0, fmt.Errorf("%s: %w", op, err)
@@ -173,7 +167,7 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 }
 
 func (a Auth) Logout(ctx context.Context, refreshToken string) error {
-	const op = "authService.Logout"
+	const op = "service.auth.logout"
 	log := a.log.With(slog.String("op", op))
 
 	err := a.sessionStorage.Delete(ctx, refreshToken)
@@ -186,7 +180,7 @@ func (a Auth) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.UserCredentialsDTO, error) {
-	const op = "authService.RefreshToken"
+	const op = "service.auth.refreshToken"
 	log := a.log.With(slog.String("op", op))
 
 	userID, err := a.sessionStorage.Get(ctx, rtToken)
@@ -238,7 +232,7 @@ func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.
 }
 
 func (a Auth) CheckUserRole(ctx context.Context, userId int64, roles []userv1.Role) (bool, error) {
-	const op = "authService.CheckUserRole"
+	const op = "service.auth.checkUserRole"
 	log := a.log.With(slog.String("op", op))
 
 	role, err := a.usrStorage.GetUserRoleByID(ctx, userId)
@@ -263,7 +257,7 @@ func (a Auth) CheckUserRole(ctx context.Context, userId int64, roles []userv1.Ro
 }
 
 func (a Auth) ActivateUser(ctx context.Context, token string) error {
-	const op = "authService.ActivateUser"
+	const op = "service.auth.activateUser"
 	log := a.log.With(slog.String("op", op))
 
 	userID, err := a.activationTokenStorage.Get(ctx, token)

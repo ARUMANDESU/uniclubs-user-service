@@ -1,7 +1,8 @@
 .gitignore
 .idea
 .git
-.env.*
+config
 .env
+../uniclubs-club-service/.env
 tests
 .github

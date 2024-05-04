@@ -32,6 +32,10 @@ func New(databaseDSN string) (*Storage, error) {
 	return &Storage{DB: db}, nil
 }
 
+func (s *Storage) Close() error {
+	return s.DB.Close()
+}
+
 func (s *Storage) SaveUser(ctx context.Context, user *domain.User) error {
 	const op = "storage.postgresql.SaveUser"
 
@@ -108,7 +112,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*domain.User, 
 }
 
 func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
-	const op = "storage.postgresql.GetUserByEmail"
+	const op = "storage.postgresql.getUserByEmail"
 
 	stmt, err := s.DB.Prepare(`
 		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.avatar_url, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
@@ -142,7 +146,7 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*domain.Use
 }
 
 func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role string, err error) {
-	const op = "storage.postgresql.GetUserRoleByID"
+	const op = "storage.postgresql.getUserRoleByID"
 
 	stmt, err := s.DB.Prepare(`
 		SELECT r.name
@@ -168,7 +172,7 @@ func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role strin
 }
 
 func (s *Storage) UpdateUser(ctx context.Context, user *domain.User) error {
-	const op = "storage.postgresql.UpdateUser"
+	const op = "storage.postgresql.updateUser"
 
 	stmt, err := s.DB.Prepare(`
 		UPDATE users
@@ -211,7 +215,7 @@ func (s *Storage) UpdateUser(ctx context.Context, user *domain.User) error {
 }
 
 func (s *Storage) DeleteUserByID(ctx context.Context, userID int64) error {
-	const op = "storage.postgresql.DeleteUserByID"
+	const op = "storage.postgresql.deleteUserByID"
 
 	stmt, err := s.DB.Prepare(`DELETE FROM users WHERE id = $1 and activated;`)
 	if err != nil {
@@ -236,7 +240,7 @@ func (s *Storage) DeleteUserByID(ctx context.Context, userID int64) error {
 }
 
 func (s *Storage) ActivateUser(ctx context.Context, userID int64) error {
-	const op = "storage.postgresql.ActivateUser"
+	const op = "storage.postgresql.activateUser"
 
 	stmt, err := s.DB.Prepare(`UPDATE users SET activated = true  WHERE id = $1;`)
 	if err != nil {
@@ -261,7 +265,7 @@ func (s *Storage) ActivateUser(ctx context.Context, userID int64) error {
 }
 
 func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error) {
-	const op = "storage.postgresql.GetAll"
+	const op = "storage.postgresql.getAll"
 
 	stmt, err := s.DB.Prepare(`
 		SELECT count(*) OVER(), u.id,
@@ -324,7 +328,7 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 }
 
 func (s *Storage) UpdateUserRole(ctx context.Context, userID int64, role string) error {
-	const op = "storage.postgresql.UpdateUserRole"
+	const op = "storage.postgresql.updateUserRole"
 
 	stmt, err := s.DB.Prepare(`
 		UPDATE users
