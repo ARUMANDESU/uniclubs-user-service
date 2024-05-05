@@ -33,9 +33,9 @@ type Amqp interface {
 
 type UserStorage interface {
 	SaveUser(ctx context.Context, user *domain.User) error
-	GetUserByID(ctx context.Context, userID int64) (user *domain.User, err error)
-	GetUserByEmail(ctx context.Context, email string) (user *domain.User, err error)
-	GetUserRoleByID(ctx context.Context, userID int64) (role string, err error)
+	GetUserByID(ctx context.Context, userID int64) (*domain.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
+	GetUserRoleByID(ctx context.Context, userID int64) (string, error)
 	ActivateUser(ctx context.Context, userID int64) error
 }
 

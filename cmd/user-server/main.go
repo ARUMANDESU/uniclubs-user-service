@@ -51,7 +51,6 @@ func main() {
 	log.Info("stopping application", slog.String("signal", sign.String()))
 	application.Close()
 	log.Info("application stopped")
-
 }
 
 func setupLogger(env string) *slog.Logger {
