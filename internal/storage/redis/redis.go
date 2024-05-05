@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/redis/go-redis/v9"
-	"log"
 	"strconv"
 	"time"
 )
@@ -27,7 +26,7 @@ func New(redisURL string) (*Storage, error) {
 
 	_, err = client.Ping(context.Background()).Result()
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("%s: failed to ping:   %w", op, err)
 	}
 
 	return &Storage{client: client}, err
@@ -46,7 +45,7 @@ func (s Storage) Close() error {
 }
 
 func (s Storage) Create(ctx context.Context, sessionToken string, userID int64, duration time.Duration) error {
-	const op = "storage.redis.Create"
+	const op = "storage.redis.create"
 
 	err := s.client.Set(ctx, sessionToken, userID, duration).Err()
 	if err != nil {
@@ -57,7 +56,7 @@ func (s Storage) Create(ctx context.Context, sessionToken string, userID int64, 
 }
 
 func (s Storage) Get(ctx context.Context, sessionToken string) (int64, error) {
-	const op = "storage.redis.Get"
+	const op = "storage.redis.get"
 
 	val, err := s.client.Get(ctx, sessionToken).Result()
 	if err != nil {
@@ -75,7 +74,7 @@ func (s Storage) Get(ctx context.Context, sessionToken string) (int64, error) {
 }
 
 func (s Storage) Delete(ctx context.Context, sessionToken string) error {
-	const op = "storage.redis.Delete"
+	const op = "storage.redis.delete"
 	err := s.client.Del(ctx, sessionToken).Err()
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)

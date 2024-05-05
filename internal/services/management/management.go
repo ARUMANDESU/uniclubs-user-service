@@ -54,18 +54,17 @@ func New(log *slog.Logger, storage UserStorage, imageStorage ImageStorage, amqp 
 }
 
 func (m Management) GetUser(ctx context.Context, userID int64) (*domain.User, error) {
-	const op = "Management.GetUser"
+	const op = "service.management.getUser"
 	log := m.log.With(slog.String("op", op))
 
 	user, err := m.usrStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user does not exists", logger.Err(err))
-			return nil, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return nil, ErrUserNotExist
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, err
 		}
 
 	}
@@ -75,18 +74,17 @@ func (m Management) GetUser(ctx context.Context, userID int64) (*domain.User, er
 }
 
 func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
-	const op = "Management.UpdateUser"
+	const op = "service.management.updateUser"
 	log := m.log.With(slog.String("op", op))
 
 	err := m.usrStorage.UpdateUser(ctx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user not found", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return ErrUserNotExist
 		default:
 			log.Error("failed to update user", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, err)
+			return err
 		}
 	}
 
@@ -105,44 +103,44 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return err
 	}
 
 	return nil
 }
 
 func (m Management) DeleteUser(ctx context.Context, userID int64) error {
-	const op = "Management.DeleteUser"
+	const op = "service.management.deleteUser"
 	log := m.log.With(slog.String("op", op))
 
 	err := m.usrStorage.DeleteUserByID(ctx, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return ErrUserNotExist
 		default:
 			log.Error("failed to delete user", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, err)
+			return err
 		}
 	}
 
 	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserDeletedEventRoutingKey, userID)
 	if err != nil {
 		log.Error("failed to publish user deleted event", logger.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return err
 	}
 
 	return nil
 }
 
 func (m Management) SearchUsers(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error) {
-	const op = "Management.SearchUsers"
+	const op = "service.management.searchUsers"
 	log := m.log.With(slog.String("op", op))
 
 	users, metadata, err := m.usrStorage.GetAll(ctx, query, filters)
 	if err != nil {
 		log.Error("failed to get users", logger.Err(err))
-		return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
+		return nil, domain.Metadata{}, err
 	}
 
 	return users, metadata, nil
@@ -150,18 +148,17 @@ func (m Management) SearchUsers(ctx context.Context, query string, filters domai
 }
 
 func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte) (*domain.User, error) {
-	const op = "Management.UpdateAvatar"
+	const op = "service.management.updateAvatar"
 	log := m.log.With(slog.String("op", op))
 
 	user, err := m.usrStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user does not exists", logger.Err(err))
-			return nil, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return nil, ErrUserNotExist
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, err
 		}
 	}
 
@@ -171,7 +168,7 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 		err = m.imageStorage.DeleteImage(ctx, path.Base(user.AvatarURL))
 		if err != nil {
 			log.Error("failed to delete previous avatar", logger.Err(err))
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, err
 		}
 	}
 
@@ -188,7 +185,7 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 	url, err := m.imageStorage.UploadImage(imageCtx, compressImage, filename)
 	if err != nil {
 		log.Error("failed to upload avatar", logger.Err(err))
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, err
 	}
 	user.AvatarURL = url
 
@@ -196,11 +193,11 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user not found", logger.Err(err))
-			return nil, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			log.Warn("user not found while updating avatar", logger.Err(err))
+			return nil, ErrUserNotExist
 		default:
 			log.Error("failed to update user avatar url", logger.Err(err))
-			return nil, fmt.Errorf("%s: %w", op, err)
+			return nil, err
 		}
 	}
 
@@ -215,60 +212,58 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, err
 	}
 
 	return user, nil
 }
 
 func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error {
-	const op = "Management.ChangeUserRole"
+	const op = "service.management.changeUserRole"
 	log := m.log.With(slog.String("op", op))
 
 	user, err := m.usrStorage.GetUserByID(ctx, dto.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user does not exists", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return ErrUserNotExist
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, err)
+			return err
 		}
 	}
 
 	if user.Role != "DSVR" && user.Role != "ADMIN" {
-		return fmt.Errorf("%s: %w", op, ErrUserNonAuthorized)
+		return ErrUserNonAuthorized
 	}
 
 	target, err := m.usrStorage.GetUserByID(ctx, dto.TargetID)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			log.Error("user does not exists", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return ErrUserNotExist
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, err)
+			return err
 		}
 	}
 
 	if user.Role == "DSVR" {
 		if target.Role == "DSVR" || dto.Role == "DSVR" {
-			return fmt.Errorf("%s: %w", op, ErrUserNonAuthorized)
+			return ErrUserNonAuthorized
 		}
 	} else if user.Role == "ADMIN" {
 		if target.Role == "DSVR" || target.Role == "ADMIN" || dto.Role == "DSVR" || dto.Role == "ADMIN" {
-			return fmt.Errorf("%s: %w", op, ErrUserNonAuthorized)
+			return ErrUserNonAuthorized
 		}
 	} else {
-		return fmt.Errorf("%s: %w", op, ErrUserNonAuthorized)
+		return ErrUserNonAuthorized
 	}
 
 	err = m.usrStorage.UpdateUserRole(ctx, target.ID, dto.Role)
 	if err != nil {
 		log.Error("failed to update user's role", logger.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return err
 	}
 
 	msg := domain.Notification{
@@ -286,7 +281,7 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.PushNotificationRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish push notification", logger.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return err
 	}
 
 	return nil

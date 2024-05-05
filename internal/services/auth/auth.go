@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
@@ -121,28 +120,28 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 	user.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(dto.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Error("failed to generate password hash", logger.Err(err))
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return 0, err
 	}
 
 	err = a.usrStorage.SaveUser(ctx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserExists):
-			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
+			return 0, ErrUserExists
 		default:
 			log.Error("failed to save user", logger.Err(err))
-			return 0, fmt.Errorf("%s: %w", op, err)
+			return 0, err
 		}
 	}
 
 	token, err := activate.GenerateToken()
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return 0, err
 	}
 	err = a.activationTokenStorage.Create(ctx, token, user.ID, time.Hour*24)
 	if err != nil {
-		log.Info("can not save activate token", logger.Err(err))
-		return 0, fmt.Errorf("%s: %w", op, err)
+		log.Warn("can not save activate token", logger.Err(err))
+		return 0, err
 	}
 
 	msg := struct {
@@ -160,7 +159,7 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 	err = a.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserRegisteredEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish", logger.Err(err))
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return 0, err
 	}
 
 	return user.ID, nil
@@ -173,7 +172,7 @@ func (a Auth) Logout(ctx context.Context, refreshToken string) error {
 	err := a.sessionStorage.Delete(ctx, refreshToken)
 	if err != nil {
 		log.Error("failed to delete refresh token", logger.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return err
 	}
 
 	return nil
@@ -187,10 +186,10 @@ func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrTokenNotExists):
-			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s, %w", op, ErrRefreshTokenNotExists)
+			return dtos.UserCredentialsDTO{}, ErrRefreshTokenNotExists
 		default:
 			log.Error("failed to get session", logger.Err(err))
-			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
+			return dtos.UserCredentialsDTO{}, err
 		}
 	}
 
@@ -203,10 +202,10 @@ func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return dtos.UserCredentialsDTO{}, ErrUserNotExist
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
+			return dtos.UserCredentialsDTO{}, err
 		}
 
 	}
@@ -220,8 +219,8 @@ func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.
 	// save rt token
 	err = a.sessionStorage.Create(ctx, tokenPair["refresh_token"], user.ID, time.Hour*24*30)
 	if err != nil {
-		log.Info("failed to save refresh token", logger.Err(err))
-		return dtos.UserCredentialsDTO{}, fmt.Errorf("%s: %w", op, err)
+		log.Error("failed to save refresh token", logger.Err(err))
+		return dtos.UserCredentialsDTO{}, err
 	}
 
 	return dtos.UserCredentialsDTO{
@@ -240,10 +239,10 @@ func (a Auth) CheckUserRole(ctx context.Context, userId int64, roles []userv1.Ro
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
 			log.Error("user does not exists", logger.Err(err))
-			return false, fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return false, ErrUserNotExist
 		default:
 			log.Error("failed to get role", logger.Err(err))
-			return false, fmt.Errorf("%s: %w", op, err)
+			return false, err
 		}
 	}
 
@@ -265,9 +264,9 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 		log.Error("failed to get activation token", logger.Err(err))
 		switch {
 		case errors.Is(err, storage.ErrTokenNotExists):
-			return fmt.Errorf("%s, %w", op, ErrActivationTokenNotExists)
+			return ErrActivationTokenNotExists
 		default:
-			return fmt.Errorf("%s: %w", op, err)
+			return err
 		}
 	}
 
@@ -276,10 +275,10 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
 			log.Error("user does not exists", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return ErrUserNotExist
 		default:
 			log.Error("failed to activate user", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, err)
+			return err
 		}
 	}
 
@@ -288,10 +287,10 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
 			log.Error("user does not exists", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, ErrUserNotExist)
+			return ErrUserNotExist
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return fmt.Errorf("%s: %w", op, err)
+			return err
 		}
 
 	}
@@ -314,7 +313,7 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 	err = a.amqp.Publish(ctx, "", rabbitmq.UserActivatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user.activated", logger.Err(err))
-		return fmt.Errorf("%s: %w", op, err)
+		return err
 	}
 
 	err = a.activationTokenStorage.Delete(ctx, token)
