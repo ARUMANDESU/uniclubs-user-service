@@ -29,6 +29,8 @@ func New(databaseDSN string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	// TODO: set options for db
+
 	return &Storage{DB: db}, nil
 }
 

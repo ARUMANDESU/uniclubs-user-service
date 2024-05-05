@@ -151,7 +151,16 @@ func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarReq
 
 	user, err := s.management.UpdateAvatar(ctx, req.GetUserId(), req.GetImage())
 	if err != nil {
-		return nil, status.Error(codes.Internal, ErrInternal.Error())
+		switch {
+		case errors.Is(err, domain.ErrImageQuality),
+			errors.Is(err, domain.ErrImageFormat),
+			errors.Is(err, domain.ErrImageIsEmpty):
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		case errors.Is(err, management.ErrUserNotExist):
+			return nil, status.Error(codes.NotFound, err.Error())
+		default:
+			return nil, status.Error(codes.Internal, ErrInternal.Error())
+		}
 	}
 
 	return user.ToUserObject(), nil

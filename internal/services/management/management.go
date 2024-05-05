@@ -175,8 +175,15 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte
 	// Compress image
 	compressImage, filename, err := imageUtils.CompressImage(image, 75)
 	if err != nil {
-		log.Error("failed to compress image", logger.Err(err))
-		return nil, err
+		switch {
+		case errors.Is(err, domain.ErrImageQuality),
+			errors.Is(err, domain.ErrImageFormat),
+			errors.Is(err, domain.ErrImageIsEmpty):
+			return nil, err
+		default:
+			log.Error("failed to compress image", logger.Err(err))
+			return nil, err
+		}
 	}
 
 	imageCtx, cancel := context.WithTimeout(ctx, time.Second*10)
