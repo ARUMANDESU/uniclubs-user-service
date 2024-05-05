@@ -17,7 +17,7 @@ type Storage struct {
 }
 
 func New(databaseDSN string) (*Storage, error) {
-	const op = "storage.postgresql.New"
+	const op = "storage.postgresql.new"
 
 	db, err := sql.Open("pgx", databaseDSN)
 	if err != nil {
@@ -39,7 +39,7 @@ func (s *Storage) Close() error {
 }
 
 func (s *Storage) SaveUser(ctx context.Context, user *domain.User) error {
-	const op = "storage.postgresql.SaveUser"
+	const op = "storage.postgresql.saveUser"
 
 	query := `
 		INSERT INTO users(email, pass_hash, first_name,last_name, barcode, major, group_name, year, role_id)
@@ -69,7 +69,7 @@ func (s *Storage) SaveUser(ctx context.Context, user *domain.User) error {
 }
 
 func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
-	const op = "storage.postgresql.GetUserByID"
+	const op = "storage.postgresql.getUserByID"
 
 	query := `
 		SELECT u.id, u.email, u.pass_hash, u.first_name,u.last_name, u.avatar_url, u.created_at,
