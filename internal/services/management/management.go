@@ -255,15 +255,11 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 		}
 	}
 
-	if user.Role == "DSVR" {
-		if target.Role == "DSVR" || dto.Role == "DSVR" {
-			return ErrUserNonAuthorized
-		}
-	} else if user.Role == "ADMIN" {
-		if target.Role == "DSVR" || target.Role == "ADMIN" || dto.Role == "DSVR" || dto.Role == "ADMIN" {
-			return ErrUserNonAuthorized
-		}
-	} else {
+	userRolePosition := domain.RoleMap[user.Role]
+	targetRolePosition := domain.RoleMap[target.Role]
+	rolePosition := domain.RoleMap[dto.Role]
+
+	if userRolePosition <= targetRolePosition || userRolePosition <= rolePosition {
 		return ErrUserNonAuthorized
 	}
 

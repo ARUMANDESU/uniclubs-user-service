@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -212,4 +213,173 @@ func TestManagement_SearchUsers_Err(t *testing.T) {
 	assert.Equal(t, domain.Metadata{}, metadataGot)
 
 	suite.MockUserStorage.AssertCalled(t, "GetAll", mock.Anything, query, filters)
+}
+
+func TestManagement_ChangeUserRole_HappyPath(t *testing.T) {
+	suite := Setup(t)
+
+	tests := []struct {
+		name   string
+		user   *domain.User
+		target *domain.User
+		role   string
+	}{
+		{
+			name:   "Change role to ADMIN",
+			user:   &domain.User{ID: 1, Role: "DSVR"},
+			target: &domain.User{ID: 2, Role: "USER"},
+			role:   "ADMIN",
+		},
+		{
+			name:   "Change role to USER",
+			user:   &domain.User{ID: 1, Role: "DSVR"},
+			target: &domain.User{ID: 2, Role: "ADMIN"},
+			role:   "USER",
+		},
+		{
+			name:   "Change role to MODER",
+			user:   &domain.User{ID: 1, Role: "DSVR"},
+			target: &domain.User{ID: 2, Role: "ADMIN"},
+			role:   "MODER",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dto := &dtos.ChangeRoleDTO{
+				UserID:   tt.user.ID,
+				TargetID: tt.target.ID,
+				Role:     tt.role,
+			}
+			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
+			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.target.ID).Return(tt.target, nil)
+			suite.MockUserStorage.On("UpdateUserRole", mock.Anything, tt.target.ID, tt.role).Return(nil)
+			suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+			err := suite.Management.ChangeUserRole(context.Background(), dto)
+
+			require.NoError(t, err)
+
+			suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.user.ID)
+			suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.target.ID)
+			suite.MockUserStorage.AssertCalled(t, "UpdateUserRole", mock.Anything, tt.target.ID, tt.role)
+			suite.MockAmqp.AssertCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		})
+	}
+}
+
+func TestManagement_ChangeUserRole_FailPath(t *testing.T) {
+	suite := Setup(t)
+
+	tests := []struct {
+		name        string
+		user        *domain.User
+		target      *domain.User
+		role        string
+		expectedErr error
+	}{
+		{
+			name:        "Moder change target role from ADMIN to MODER, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "MODER"},
+			target:      &domain.User{ID: 2, Role: "ADMIN"},
+			role:        "MODER",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "Moder change target role from DSVR to MODER, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "MODER"},
+			target:      &domain.User{ID: 2, Role: "DSVR"},
+			role:        "MODER",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "Moder change target role from DSVR to ADMIN, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "MODER"},
+			target:      &domain.User{ID: 2, Role: "DSVR"},
+			role:        "ADMIN",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "Moder change target role from DSVR to USER, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "MODER"},
+			target:      &domain.User{ID: 2, Role: "DSVR"},
+			role:        "USER",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "ADMIN change target role from USER to ADMIN, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "ADMIN"},
+			target:      &domain.User{ID: 2, Role: "USER"},
+			role:        "ADMIN",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "ADMIN change target role from USER to DSVR, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "ADMIN"},
+			target:      &domain.User{ID: 2, Role: "USER"},
+			role:        "DSVR",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "ADMIN change target role from MODER to DSVR, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "ADMIN"},
+			target:      &domain.User{ID: 2, Role: "MODER"},
+			role:        "DSVR",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "ADMIN change target role from MODER to ADMIN, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "ADMIN"},
+			target:      &domain.User{ID: 2, Role: "MODER"},
+			role:        "ADMIN",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "ADMIN change target role from DSVR to ADMIN, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "ADMIN"},
+			target:      &domain.User{ID: 2, Role: "DSVR"},
+			role:        "ADMIN",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "ADMIN change target role from ADMIN to DSVR, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "ADMIN"},
+			target:      &domain.User{ID: 2, Role: "ADMIN"},
+			role:        "DSVR",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "DSVR change target role from ADMIN to DSVR, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "DSVR"},
+			target:      &domain.User{ID: 2, Role: "ADMIN"},
+			role:        "DSVR",
+			expectedErr: ErrUserNonAuthorized,
+		},
+		{
+			name:        "DSVR change target role from ADMIN to DSVR, user unauthorized",
+			user:        &domain.User{ID: 1, Role: "DSVR"},
+			target:      &domain.User{ID: 2, Role: "MODER"},
+			role:        "DSVR",
+			expectedErr: ErrUserNonAuthorized,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dto := &dtos.ChangeRoleDTO{
+				UserID:   tt.user.ID,
+				TargetID: tt.target.ID,
+				Role:     tt.role,
+			}
+			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
+			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.target.ID).Return(tt.target, nil)
+
+			err := suite.Management.ChangeUserRole(context.Background(), dto)
+			require.ErrorIs(t, err, tt.expectedErr)
+
+			suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, mock.AnythingOfType("int64"))
+			suite.MockUserStorage.AssertNotCalled(t, "UpdateUserRole", mock.Anything, tt.target.ID, tt.role)
+			suite.MockAmqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		})
+	}
 }
