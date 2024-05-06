@@ -242,10 +242,35 @@ func TestManagement_ChangeUserRole_HappyPath(t *testing.T) {
 			target: &domain.User{ID: 2, Role: "ADMIN"},
 			role:   "MODER",
 		},
+		{
+			name:   "Change role to MODER",
+			user:   &domain.User{ID: 1, Role: "DSVR"},
+			target: &domain.User{ID: 2, Role: "USER"},
+			role:   "MODER",
+		},
+		{
+			name:   "Change role to MODER",
+			user:   &domain.User{ID: 1, Role: "DSVR"},
+			target: &domain.User{ID: 2, Role: "USER"},
+			role:   "MODER",
+		},
+		{
+			name:   "Change role to MODER",
+			user:   &domain.User{ID: 1, Role: "ADMIN"},
+			target: &domain.User{ID: 2, Role: "USER"},
+			role:   "MODER",
+		},
+		{
+			name:   "Change role to USER",
+			user:   &domain.User{ID: 1, Role: "ADMIN"},
+			target: &domain.User{ID: 2, Role: "MODER"},
+			role:   "USER",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dto := &dtos.ChangeRoleDTO{
 				UserID:   tt.user.ID,
 				TargetID: tt.target.ID,
@@ -366,6 +391,7 @@ func TestManagement_ChangeUserRole_FailPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dto := &dtos.ChangeRoleDTO{
 				UserID:   tt.user.ID,
 				TargetID: tt.target.ID,
