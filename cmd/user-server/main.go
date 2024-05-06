@@ -49,10 +49,8 @@ func main() {
 	sign := <-stop
 
 	log.Info("stopping application", slog.String("signal", sign.String()))
-	application.GRPCSrv.Stop()
-
+	application.Close()
 	log.Info("application stopped")
-
 }
 
 func setupLogger(env string) *slog.Logger {

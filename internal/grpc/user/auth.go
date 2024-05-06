@@ -156,7 +156,8 @@ func (s serverApi) RefreshToken(ctx context.Context, req *userv1.RefreshTokenReq
 			errors.Is(err, domain.ErrUserIDMismatch),
 			errors.Is(err, domain.ErrTokenIsNotValid),
 			errors.Is(err, domain.ErrInvalidTokenClaims),
-			errors.Is(err, domain.ErrUserIDClaimNotFound):
+			errors.Is(err, domain.ErrUserIDClaimNotFound),
+			errors.Is(err, domain.ErrTokenSignatureIsInvalid):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		case errors.Is(err, auth.ErrUserNotExist):
 		default:

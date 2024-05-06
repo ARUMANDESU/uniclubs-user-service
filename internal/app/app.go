@@ -15,7 +15,11 @@ import (
 )
 
 type App struct {
-	GRPCSrv *grpcapp.App
+	GRPCSrv  *grpcapp.App
+	log      *slog.Logger
+	postgres *postgresql.Storage
+	redis    *redis.Storage
+	rabbitMQ *rabbitmq.Rabbitmq
 }
 
 func New(log *slog.Logger, cfg *config.Config, awsCfg aws.Config) *App {
@@ -27,13 +31,13 @@ func New(log *slog.Logger, cfg *config.Config, awsCfg aws.Config) *App {
 		l.Error("failed to connect to postgresql", logger.Err(err))
 		panic(err)
 	}
-	redisStrg, err := redis.New(cfg.RedisURL)
+	redisStorage, err := redis.New(cfg.RedisURL)
 	if err != nil {
 		l.Error("failed to connect to redis", logger.Err(err))
 		panic(err)
 	}
 
-	rmq, err := rabbitmq.New(cfg.Rabbitmq)
+	rabbitMQ, err := rabbitmq.New(cfg.Rabbitmq)
 	if err != nil {
 		l.Error("failed to connect to rabbitmq", logger.Err(err))
 		panic(err)
@@ -45,10 +49,32 @@ func New(log *slog.Logger, cfg *config.Config, awsCfg aws.Config) *App {
 		panic(err)
 	}
 
-	authService := auth.New(log, cfg.Jwt, postgres, redisStrg, redisStrg, rmq)
-	managementService := management.New(log, postgres, awsS3Client, rmq)
+	authService := auth.New(log, cfg.Jwt, postgres, redisStorage, redisStorage, rabbitMQ)
+	managementService := management.New(log, postgres, awsS3Client, rabbitMQ)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
 
-	return &App{GRPCSrv: grpcApp}
+	return &App{GRPCSrv: grpcApp, log: log, postgres: postgres, redis: redisStorage, rabbitMQ: rabbitMQ}
+}
+
+func (a *App) Close() {
+	const op = "app.close"
+	log := a.log.With(slog.String("op", op))
+
+	a.GRPCSrv.Stop()
+
+	err := a.postgres.Close()
+	if err != nil {
+		log.Warn(op, "failed to close postgres connection", logger.Err(err))
+	}
+
+	err = a.redis.Close()
+	if err != nil {
+		log.Warn(op, "failed to close redis connection", logger.Err(err))
+	}
+
+	err = a.rabbitMQ.Close()
+	if err != nil {
+		log.Warn(op, "failed to close rabbitmq connection", logger.Err(err))
+	}
 }

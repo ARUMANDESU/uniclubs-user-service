@@ -17,7 +17,7 @@ type Storage struct {
 }
 
 func New(databaseDSN string) (*Storage, error) {
-	const op = "storage.postgresql.New"
+	const op = "storage.postgresql.new"
 
 	db, err := sql.Open("pgx", databaseDSN)
 	if err != nil {
@@ -29,37 +29,32 @@ func New(databaseDSN string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
+	// TODO: set options for db
+
 	return &Storage{DB: db}, nil
 }
 
-func (s *Storage) SaveUser(ctx context.Context, user *domain.User) error {
-	const op = "storage.postgresql.SaveUser"
+func (s *Storage) Close() error {
+	return s.DB.Close()
+}
 
-	stmt, err := s.DB.Prepare(`
-		INSERT INTO users(email, pass_hash, first_name, last_name, barcode, major, group_name, year, role_id)
+func (s *Storage) SaveUser(ctx context.Context, user *domain.User) error {
+	const op = "storage.postgresql.saveUser"
+
+	query := `
+		INSERT INTO users(email, pass_hash, first_name,last_name, barcode, major, group_name, year, role_id)
 		values($1, $2, $3, $4, $5, $6, $7, $8, DEFAULT)
 		returning id;
-	`)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	defer stmt.Close()
+	`
 
 	args := []any{
-		user.Email,
-		user.PasswordHash,
-		user.FirstName,
-		user.LastName,
-		user.Barcode,
-		user.Major,
-		user.GroupName,
-		user.Year,
+		user.Email, user.PasswordHash, user.FirstName, user.LastName,
+		user.Barcode, user.Major, user.GroupName, user.Year,
 	}
 
-	result := stmt.QueryRowContext(ctx, args...)
+	result := s.DB.QueryRowContext(ctx, query, args...)
 
-	err = result.Scan(&user.ID)
+	err := result.Scan(&user.ID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -74,28 +69,22 @@ func (s *Storage) SaveUser(ctx context.Context, user *domain.User) error {
 }
 
 func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
-	const op = "storage.postgresql.GetUserByID"
+	const op = "storage.postgresql.getUserByID"
 
-	stmt, err := s.DB.Prepare(`
-		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.avatar_url, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
+	query := `
+		SELECT u.id, u.email, u.pass_hash, u.first_name,u.last_name, u.avatar_url, u.created_at,
+		       u.barcode, u.major, u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
 		WHERE u.id = $1;
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
+	`
 
-	defer stmt.Close()
-
-	result := stmt.QueryRowContext(ctx, userID)
+	result := s.DB.QueryRowContext(ctx, query, userID)
 	user := domain.User{}
 
-	err = result.Scan(
-		&user.ID, &user.Email, &user.PasswordHash,
-		&user.FirstName, &user.LastName, &user.AvatarURL,
-		&user.CreatedAt, &user.Barcode, &user.Major,
-		&user.GroupName, &user.Year, &user.Role,
+	err := result.Scan(
+		&user.ID, &user.Email, &user.PasswordHash, &user.FirstName, &user.LastName, &user.AvatarURL,
+		&user.CreatedAt, &user.Barcode, &user.Major, &user.GroupName, &user.Year, &user.Role,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -108,28 +97,22 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*domain.User, 
 }
 
 func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
-	const op = "storage.postgresql.GetUserByEmail"
+	const op = "storage.postgresql.getUserByEmail"
 
-	stmt, err := s.DB.Prepare(`
-		SELECT u.id, u.email, u.pass_hash, u.first_name, u.last_name, u.avatar_url, u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
+	query := `
+		SELECT u.id, u.email, u.pass_hash, u.first_name,u.last_name, u.avatar_url,
+		       u.created_at, u.barcode, u.major, u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
 		WHERE u.email = $1 and u.activated;
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
+	`
 
-	defer stmt.Close()
-
-	result := stmt.QueryRowContext(ctx, email)
+	result := s.DB.QueryRowContext(ctx, query, email)
 	user := domain.User{}
 
-	err = result.Scan(
-		&user.ID, &user.Email, &user.PasswordHash,
-		&user.FirstName, &user.LastName, &user.AvatarURL,
-		&user.CreatedAt, &user.Barcode, &user.Major,
-		&user.GroupName, &user.Year, &user.Role,
+	err := result.Scan(
+		&user.ID, &user.Email, &user.PasswordHash, &user.FirstName, &user.LastName, &user.AvatarURL,
+		&user.CreatedAt, &user.Barcode, &user.Major, &user.GroupName, &user.Year, &user.Role,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -141,22 +124,18 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*domain.Use
 	return &user, nil
 }
 
-func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role string, err error) {
-	const op = "storage.postgresql.GetUserRoleByID"
+func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (string, error) {
+	const op = "storage.postgresql.getUserRoleByID"
 
-	stmt, err := s.DB.Prepare(`
+	query := `
 		SELECT r.name
 		FROM users u left join roles r 
 		ON u.role_id = r.id
 		where u.id = $1 and u.activated;
-	`)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
+	`
+	var role string
 
-	defer stmt.Close()
-
-	err = stmt.QueryRowContext(ctx, userID).Scan(&role)
+	err := s.DB.QueryRowContext(ctx, query, userID).Scan(&role)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
@@ -168,33 +147,22 @@ func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (role strin
 }
 
 func (s *Storage) UpdateUser(ctx context.Context, user *domain.User) error {
-	const op = "storage.postgresql.UpdateUser"
+	const op = "storage.postgresql.updateUser"
 
-	stmt, err := s.DB.Prepare(`
+	query := `
 		UPDATE users
 		SET email = $2, first_name = $3, last_name = $4,
 		    phone_number = $5, barcode = $6, major = $7,
 		    group_name = $8, year = $9, avatar_url = $10
 		WHERE id = $1 and activated;
-	`)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	defer stmt.Close()
+	`
 
 	args := []any{
-		user.ID,
-		user.Email,
-		user.FirstName,
-		user.LastName,
-		user.PhoneNumber,
-		user.Barcode,
-		user.Major,
-		user.GroupName,
-		user.Year,
-		user.AvatarURL,
+		user.ID, user.Email, user.FirstName, user.LastName, user.PhoneNumber,
+		user.Barcode, user.Major, user.GroupName, user.Year, user.AvatarURL,
 	}
-	result, err := stmt.ExecContext(ctx, args...)
+
+	result, err := s.DB.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -211,15 +179,9 @@ func (s *Storage) UpdateUser(ctx context.Context, user *domain.User) error {
 }
 
 func (s *Storage) DeleteUserByID(ctx context.Context, userID int64) error {
-	const op = "storage.postgresql.DeleteUserByID"
+	const op = "storage.postgresql.deleteUserByID"
 
-	stmt, err := s.DB.Prepare(`DELETE FROM users WHERE id = $1 and activated;`)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	defer stmt.Close()
-
-	result, err := stmt.ExecContext(ctx, userID)
+	result, err := s.DB.ExecContext(ctx, `DELETE FROM users WHERE id = $1 and activated`, userID)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -236,15 +198,9 @@ func (s *Storage) DeleteUserByID(ctx context.Context, userID int64) error {
 }
 
 func (s *Storage) ActivateUser(ctx context.Context, userID int64) error {
-	const op = "storage.postgresql.ActivateUser"
+	const op = "storage.postgresql.activateUser"
 
-	stmt, err := s.DB.Prepare(`UPDATE users SET activated = true  WHERE id = $1;`)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	defer stmt.Close()
-
-	result, err := stmt.ExecContext(ctx, userID)
+	result, err := s.DB.ExecContext(ctx, `UPDATE users SET activated = true  WHERE id = $1`, userID)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -261,34 +217,29 @@ func (s *Storage) ActivateUser(ctx context.Context, userID int64) error {
 }
 
 func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error) {
-	const op = "storage.postgresql.GetAll"
+	const op = "storage.postgresql.getAll"
 
-	stmt, err := s.DB.Prepare(`
-		SELECT count(*) OVER(), u.id,
-		       u.email, u.first_name, u.last_name, u.avatar_url,
-		       u.created_at, u.barcode, u.major,
-		       u.group_name, u.year, r.name as role
+	q := `
+		SELECT count(*) OVER(), u.id,u.email, u.first_name, u.last_name,u.avatar_url,
+		       u.created_at, u.barcode, u.major,u.group_name, u.year, r.name as role
 		FROM users u LEFT JOIN roles r
 		ON  u.role_id = r.id
 		WHERE 
 			( (STRPOS(LOWER(email), LOWER($1)) > 0 OR $1 = '') OR
 			(STRPOS(LOWER(first_name), LOWER($1)) > 0 OR $1 = '') OR
-			(STRPOS(LOWER(last_name), LOWER($1)) > 0 OR $1 = '') )
-			AND u.activated
+			(STRPOS(LOWER(last_name), LOWER($1)) > 0 OR $1 = '') ) 
+		  	AND 
+		    u.activated
 		ORDER BY id ASC
         LIMIT $2 OFFSET $3;
-	`)
-	if err != nil {
-		return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
-	}
-	defer stmt.Close()
+	`
 
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
 	args := []any{query, filters.Limit(), filters.Offset()}
 
-	rows, err := stmt.QueryContext(ctx, args...)
+	rows, err := s.DB.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -296,16 +247,14 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 	defer rows.Close()
 
 	var totalRecords int32
-	users := []*domain.User{}
+	var users []*domain.User
 
 	for rows.Next() {
 		var user domain.User
 
 		err = rows.Scan(
-			&totalRecords, &user.ID, &user.Email,
-			&user.FirstName, &user.LastName, &user.AvatarURL,
-			&user.CreatedAt, &user.Barcode, &user.Major,
-			&user.GroupName, &user.Year, &user.Role,
+			&totalRecords, &user.ID, &user.Email, &user.FirstName, &user.LastName, &user.AvatarURL,
+			&user.CreatedAt, &user.Barcode, &user.Major, &user.GroupName, &user.Year, &user.Role,
 		)
 		if err != nil {
 			return nil, domain.Metadata{}, fmt.Errorf("%s: %w", op, err)
@@ -324,20 +273,16 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 }
 
 func (s *Storage) UpdateUserRole(ctx context.Context, userID int64, role string) error {
-	const op = "storage.postgresql.UpdateUserRole"
+	const op = "storage.postgresql.updateUserRole"
 
-	stmt, err := s.DB.Prepare(`
+	query := `
 		UPDATE users
 		SET role_id = r.id
 		FROM roles r
 		WHERE users.id = $1 AND users.activated AND r.name = $2;
-	`)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	defer stmt.Close()
+	`
 
-	result, err := stmt.ExecContext(ctx, userID, role)
+	result, err := s.DB.ExecContext(ctx, query, userID, role)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

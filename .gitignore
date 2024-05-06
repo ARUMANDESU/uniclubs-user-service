@@ -16,8 +16,8 @@
 *.dll
 *.so
 *.dylib
+../uniclubs-club-service/.env
 .env
-.env.*
 
 # Test binary, built with `go test -c`
 *.test

@@ -33,3 +33,11 @@ func TestGenerateToken(t *testing.T) {
 	assert.Equal(t, expectedToken, token, fmt.Sprintf("GenerateToken did not return the expected token. Expected: %s, Got: %s", expectedToken, token))
 
 }
+
+func BenchmarkGenerateToken(b *testing.B) {
+	rand.Reader = &MockRand{}
+
+	for i := 0; i < b.N; i++ {
+		_, _ = GenerateToken()
+	}
+}

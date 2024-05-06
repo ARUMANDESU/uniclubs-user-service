@@ -23,6 +23,22 @@ type Rabbitmq struct {
 	cfg  config.Rabbitmq
 }
 
+func (r *Rabbitmq) Close() error {
+	const op = "rabbitmq.close"
+
+	err := r.ch.Close()
+	if err != nil {
+		return fmt.Errorf("%s: failed to close channel: %w", op, err)
+	}
+
+	err = r.conn.Close()
+	if err != nil {
+		return fmt.Errorf("%s: failed to close connection: %w", op, err)
+	}
+
+	return nil
+}
+
 func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 	const op = "Rabbitmq.New"
 
