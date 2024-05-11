@@ -310,7 +310,7 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 		AvatarURL: user.AvatarURL,
 	}
 
-	err = a.amqp.Publish(ctx, "", rabbitmq.UserActivatedEventRoutingKey, msg)
+	err = a.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserActivatedEventRoutingKey, msg)
 	if err != nil {
 		log.Error("failed to publish user.activated", logger.Err(err))
 		return err
