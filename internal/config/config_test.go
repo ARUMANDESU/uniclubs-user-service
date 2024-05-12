@@ -114,10 +114,7 @@ rabbitmq:
 jwt:
   access_token_duration: "15m"
   access_token_secret: "secret"
-  refresh_token_secret: "secret"
-aws:
-  region: "us-east-1"
-  bucket: "bucket"`)
+  refresh_token_secret: "secret"`)
 
 	_, err = f.Write(configData)
 	if err != nil {
@@ -161,8 +158,6 @@ func assertConfig(t *testing.T, cfg *Config) {
 	assert.Equal(t, 15*time.Minute, cfg.Jwt.AccessTokenDuration)
 	assert.Equal(t, "secret", cfg.Jwt.AccessTokenSecret)
 	assert.Equal(t, "secret", cfg.Jwt.RefreshTokenSecret)
-	assert.Equal(t, "us-east-1", cfg.AWS.Region)
-	assert.Equal(t, "bucket", cfg.AWS.Bucket)
 }
 
 func unsetEnvVariables() {
@@ -180,6 +175,4 @@ func unsetEnvVariables() {
 	os.Unsetenv("REFRESH_TOKEN_SECRET")
 	os.Unsetenv("AWS_REGION")
 	os.Unsetenv("AWS_ACCESS_KEY_ID")
-	os.Unsetenv("AWS_SECRET_ACCESS_KEY")
-	os.Unsetenv("AWS_S3_BUCKET")
 }

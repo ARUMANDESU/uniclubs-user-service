@@ -3,7 +3,6 @@ package jwt
 import (
 	"fmt"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -70,7 +69,7 @@ func TestGetUserIDFromToken_ExpiredToken(t *testing.T) {
 
 			userIDFromToken, err := GetUserIDFromToken(tokenPair["access_token"], cfg.AccessTokenSecret)
 			require.Error(t, err, "GetUserIDFromToken should return an error")
-			assert.Equal(t, domain.ErrTokenIsExpired, err, "Error should be domain.ErrTokenIsExpired")
+			assert.Equal(t, ErrTokenIsExpired, err, "Error should be domain.ErrTokenIsExpired")
 			assert.Equal(t, int64(0), userIDFromToken, "userIDFromToken should be 0")
 		})
 	}
@@ -101,7 +100,7 @@ func TestGetUserIDFromToken_TokenIsInvalid(t *testing.T) {
 
 			userIDFromToken, err := GetUserIDFromToken(tokenPair["access_token"], invalidTokenCfg.AccessTokenSecret)
 			require.Error(t, err, "GetUserIDFromToken should return an error")
-			assert.ErrorIs(t, domain.ErrTokenSignatureIsInvalid, err, "Error should be domain.ErrTokenSignatureIsInvalid")
+			assert.ErrorIs(t, ErrTokenSignatureIsInvalid, err, "Error should be domain.ErrTokenSignatureIsInvalid")
 			assert.Equal(t, int64(0), userIDFromToken, "userIDFromToken should be 0")
 		})
 	}

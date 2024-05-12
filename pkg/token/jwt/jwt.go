@@ -1,12 +1,21 @@
 package jwt
 
 import (
+	"errors"
 	"fmt"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
 	"strings"
 	"time"
+)
+
+var (
+	ErrTokenIsNotValid         = errors.New("token is not valid")
+	ErrInvalidTokenClaims      = errors.New("invalid token claims")
+	ErrUserIDClaimNotFound     = errors.New("user_id claim not found or invalid")
+	ErrUserIDMismatch          = errors.New("user ID from token does not match provided user ID")
+	ErrTokenIsExpired          = errors.New("token is expired")
+	ErrTokenSignatureIsInvalid = errors.New("token signature is invalid")
 )
 
 func GenerateTokenPair(userID int64, cfg config.JWTConfig) (map[string]string, error) {
@@ -53,9 +62,9 @@ func GetUserIDFromToken(tokenString string, secret string) (int64, error) {
 		errorMessage := err.Error()
 		switch {
 		case strings.Contains(errorMessage, "token signature is invalid"):
-			return 0, domain.ErrTokenSignatureIsInvalid
+			return 0, ErrTokenSignatureIsInvalid
 		case strings.Contains(errorMessage, "token is expired"):
-			return 0, domain.ErrTokenIsExpired
+			return 0, ErrTokenIsExpired
 		default:
 			return 0, err
 		}
@@ -63,19 +72,19 @@ func GetUserIDFromToken(tokenString string, secret string) (int64, error) {
 
 	// Check if the token is valid
 	if !token.Valid {
-		return 0, domain.ErrTokenIsNotValid
+		return 0, ErrTokenIsNotValid
 	}
 
 	// Extract claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, domain.ErrInvalidTokenClaims
+		return 0, ErrInvalidTokenClaims
 	}
 
 	// Extract user_id from claims
 	userID, ok := claims["user_id"].(float64)
 	if !ok {
-		return 0, domain.ErrUserIDClaimNotFound
+		return 0, ErrUserIDClaimNotFound
 	}
 
 	return int64(userID), nil

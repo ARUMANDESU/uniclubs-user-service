@@ -72,23 +72,20 @@ RABBITMQ_PORT=5672
 ACCESS_TOKEN_DURATION=15m
 ACCESS_TOKEN_SECRET=hart_secret_key
 REFRESH_TOKEN_SECRET=very_hard_secret_key
-# AWS S3 Configuration
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=access_key_id
-AWS_SECRET_ACCESS_KEY=secret_access_key
-AWS_S3_BUCKET=bucket_name
 ```
 
 ### Running the Service
 After setting up the database and configuring the service, you can run it as follows:
-  ```bash
-  go run cmd/user-server/main.go
-  ```
+```bash
+go run cmd/user-server/main.go
+```
 
 Or use the provided Taskfile to run the service:
-  ```bash
-  task run:enviroment
-  #or
-  task env
-  ```
+```bash
+task run:enviroment
+ ```
+#or
+```bash
+task env
+ ```
 

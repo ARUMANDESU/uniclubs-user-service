@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/jwt"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -153,11 +153,11 @@ func (s serverApi) RefreshToken(ctx context.Context, req *userv1.RefreshTokenReq
 		case errors.Is(err, auth.ErrUserNotExist):
 			return nil, status.Error(codes.NotFound, "user not found")
 		case errors.Is(err, auth.ErrRefreshTokenNotExists),
-			errors.Is(err, domain.ErrUserIDMismatch),
-			errors.Is(err, domain.ErrTokenIsNotValid),
-			errors.Is(err, domain.ErrInvalidTokenClaims),
-			errors.Is(err, domain.ErrUserIDClaimNotFound),
-			errors.Is(err, domain.ErrTokenSignatureIsInvalid):
+			errors.Is(err, jwt.ErrUserIDMismatch),
+			errors.Is(err, jwt.ErrTokenIsNotValid),
+			errors.Is(err, jwt.ErrInvalidTokenClaims),
+			errors.Is(err, jwt.ErrUserIDClaimNotFound),
+			errors.Is(err, jwt.ErrTokenSignatureIsInvalid):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		case errors.Is(err, auth.ErrUserNotExist):
 		default:
