@@ -9,7 +9,6 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/postgresql"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/redis"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"log/slog"
 )
 
@@ -21,8 +20,8 @@ type App struct {
 	rabbitMQ *rabbitmq.Rabbitmq
 }
 
-func New(log *slog.Logger, cfg *config.Config, awsCfg aws.Config) *App {
-	const op = "App.New"
+func New(log *slog.Logger, cfg *config.Config) *App {
+	const op = "app.new"
 	l := log.With(slog.String("op", op))
 
 	postgres, err := postgresql.New(cfg.DatabaseDSN)
