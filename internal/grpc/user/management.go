@@ -23,7 +23,7 @@ type Management interface {
 	) (users []*domain.User, metadata domain.Metadata, err error)
 	UpdateUser(ctx context.Context, user *domain.User) error
 	DeleteUser(ctx context.Context, userID int64) error
-	UpdateAvatar(ctx context.Context, userID int64, image []byte) (*domain.User, error)
+	UpdateAvatar(ctx context.Context, userID int64, imageUrl string) (*domain.User, string, error)
 	ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error
 }
 
@@ -140,22 +140,18 @@ func (s serverApi) SearchUsers(ctx context.Context, req *userv1.SearchUsersReque
 	}, nil
 }
 
-func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequest) (*userv1.UserObject, error) {
+func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequest) (*userv1.UpdateAvatarResponse, error) {
 	err := validation.ValidateStruct(req,
-		validation.Field(&req.Image, validation.Required),
+		validation.Field(&req.ImageUrl, validation.Required),
 		validation.Field(&req.UserId, validation.Required, validation.Min(1)),
 	)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	user, err := s.management.UpdateAvatar(ctx, req.GetUserId(), req.GetImage())
+	user, prevAvatarUrl, err := s.management.UpdateAvatar(ctx, req.GetUserId(), req.GetImageUrl())
 	if err != nil {
 		switch {
-		case errors.Is(err, domain.ErrImageQuality),
-			errors.Is(err, domain.ErrImageFormat),
-			errors.Is(err, domain.ErrImageIsEmpty):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
 		case errors.Is(err, management.ErrUserNotExist):
 			return nil, status.Error(codes.NotFound, err.Error())
 		default:
@@ -163,7 +159,10 @@ func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarReq
 		}
 	}
 
-	return user.ToUserObject(), nil
+	return &userv1.UpdateAvatarResponse{
+		User:          user.ToUserObject(),
+		PrevAvatarUrl: prevAvatarUrl,
+	}, nil
 }
 
 func (s serverApi) ChangeUserRole(ctx context.Context, req *userv1.ChangeUserRoleRequest) (*empty.Empty, error) {

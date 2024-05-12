@@ -16,14 +16,6 @@ type Management struct {
 	mock.Mock
 }
 
-type Management_Expecter struct {
-	mock *mock.Mock
-}
-
-func (_m *Management) EXPECT() *Management_Expecter {
-	return &Management_Expecter{mock: &_m.Mock}
-}
-
 // ChangeUserRole provides a mock function with given fields: ctx, dto
 func (_m *Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error {
 	ret := _m.Called(ctx, dto)
@@ -42,35 +34,6 @@ func (_m *Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDT
 	return r0
 }
 
-// Management_ChangeUserRole_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChangeUserRole'
-type Management_ChangeUserRole_Call struct {
-	*mock.Call
-}
-
-// ChangeUserRole is a helper method to define mock.On call
-//   - ctx context.Context
-//   - dto *dtos.ChangeRoleDTO
-func (_e *Management_Expecter) ChangeUserRole(ctx interface{}, dto interface{}) *Management_ChangeUserRole_Call {
-	return &Management_ChangeUserRole_Call{Call: _e.mock.On("ChangeUserRole", ctx, dto)}
-}
-
-func (_c *Management_ChangeUserRole_Call) Run(run func(ctx context.Context, dto *dtos.ChangeRoleDTO)) *Management_ChangeUserRole_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*dtos.ChangeRoleDTO))
-	})
-	return _c
-}
-
-func (_c *Management_ChangeUserRole_Call) Return(_a0 error) *Management_ChangeUserRole_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Management_ChangeUserRole_Call) RunAndReturn(run func(context.Context, *dtos.ChangeRoleDTO) error) *Management_ChangeUserRole_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // DeleteUser provides a mock function with given fields: ctx, userID
 func (_m *Management) DeleteUser(ctx context.Context, userID int64) error {
 	ret := _m.Called(ctx, userID)
@@ -87,35 +50,6 @@ func (_m *Management) DeleteUser(ctx context.Context, userID int64) error {
 	}
 
 	return r0
-}
-
-// Management_DeleteUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUser'
-type Management_DeleteUser_Call struct {
-	*mock.Call
-}
-
-// DeleteUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-func (_e *Management_Expecter) DeleteUser(ctx interface{}, userID interface{}) *Management_DeleteUser_Call {
-	return &Management_DeleteUser_Call{Call: _e.mock.On("DeleteUser", ctx, userID)}
-}
-
-func (_c *Management_DeleteUser_Call) Run(run func(ctx context.Context, userID int64)) *Management_DeleteUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
-	})
-	return _c
-}
-
-func (_c *Management_DeleteUser_Call) Return(_a0 error) *Management_DeleteUser_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Management_DeleteUser_Call) RunAndReturn(run func(context.Context, int64) error) *Management_DeleteUser_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // GetUser provides a mock function with given fields: ctx, userID
@@ -146,35 +80,6 @@ func (_m *Management) GetUser(ctx context.Context, userID int64) (*domain.User, 
 	}
 
 	return r0, r1
-}
-
-// Management_GetUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUser'
-type Management_GetUser_Call struct {
-	*mock.Call
-}
-
-// GetUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-func (_e *Management_Expecter) GetUser(ctx interface{}, userID interface{}) *Management_GetUser_Call {
-	return &Management_GetUser_Call{Call: _e.mock.On("GetUser", ctx, userID)}
-}
-
-func (_c *Management_GetUser_Call) Run(run func(ctx context.Context, userID int64)) *Management_GetUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
-	})
-	return _c
-}
-
-func (_c *Management_GetUser_Call) Return(_a0 *domain.User, err error) *Management_GetUser_Call {
-	_c.Call.Return(_a0, err)
-	return _c
-}
-
-func (_c *Management_GetUser_Call) RunAndReturn(run func(context.Context, int64) (*domain.User, error)) *Management_GetUser_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // SearchUsers provides a mock function with given fields: ctx, query, filters
@@ -214,94 +119,41 @@ func (_m *Management) SearchUsers(ctx context.Context, query string, filters dom
 	return r0, r1, r2
 }
 
-// Management_SearchUsers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SearchUsers'
-type Management_SearchUsers_Call struct {
-	*mock.Call
-}
-
-// SearchUsers is a helper method to define mock.On call
-//   - ctx context.Context
-//   - query string
-//   - filters domain.Filters
-func (_e *Management_Expecter) SearchUsers(ctx interface{}, query interface{}, filters interface{}) *Management_SearchUsers_Call {
-	return &Management_SearchUsers_Call{Call: _e.mock.On("SearchUsers", ctx, query, filters)}
-}
-
-func (_c *Management_SearchUsers_Call) Run(run func(ctx context.Context, query string, filters domain.Filters)) *Management_SearchUsers_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.Filters))
-	})
-	return _c
-}
-
-func (_c *Management_SearchUsers_Call) Return(users []*domain.User, metadata domain.Metadata, err error) *Management_SearchUsers_Call {
-	_c.Call.Return(users, metadata, err)
-	return _c
-}
-
-func (_c *Management_SearchUsers_Call) RunAndReturn(run func(context.Context, string, domain.Filters) ([]*domain.User, domain.Metadata, error)) *Management_SearchUsers_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateAvatar provides a mock function with given fields: ctx, userID, image
-func (_m *Management) UpdateAvatar(ctx context.Context, userID int64, image []byte) (*domain.User, error) {
-	ret := _m.Called(ctx, userID, image)
+// UpdateAvatar provides a mock function with given fields: ctx, userID, imageUrl
+func (_m *Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl string) (*domain.User, string, error) {
+	ret := _m.Called(ctx, userID, imageUrl)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateAvatar")
 	}
 
 	var r0 *domain.User
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, []byte) (*domain.User, error)); ok {
-		return rf(ctx, userID, image)
+	var r1 string
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, string) (*domain.User, string, error)); ok {
+		return rf(ctx, userID, imageUrl)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64, []byte) *domain.User); ok {
-		r0 = rf(ctx, userID, image)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, string) *domain.User); ok {
+		r0 = rf(ctx, userID, imageUrl)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.User)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64, []byte) error); ok {
-		r1 = rf(ctx, userID, image)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, string) string); ok {
+		r1 = rf(ctx, userID, imageUrl)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(string)
 	}
 
-	return r0, r1
-}
+	if rf, ok := ret.Get(2).(func(context.Context, int64, string) error); ok {
+		r2 = rf(ctx, userID, imageUrl)
+	} else {
+		r2 = ret.Error(2)
+	}
 
-// Management_UpdateAvatar_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateAvatar'
-type Management_UpdateAvatar_Call struct {
-	*mock.Call
-}
-
-// UpdateAvatar is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-//   - image []byte
-func (_e *Management_Expecter) UpdateAvatar(ctx interface{}, userID interface{}, image interface{}) *Management_UpdateAvatar_Call {
-	return &Management_UpdateAvatar_Call{Call: _e.mock.On("UpdateAvatar", ctx, userID, image)}
-}
-
-func (_c *Management_UpdateAvatar_Call) Run(run func(ctx context.Context, userID int64, image []byte)) *Management_UpdateAvatar_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].([]byte))
-	})
-	return _c
-}
-
-func (_c *Management_UpdateAvatar_Call) Return(_a0 *domain.User, _a1 error) *Management_UpdateAvatar_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *Management_UpdateAvatar_Call) RunAndReturn(run func(context.Context, int64, []byte) (*domain.User, error)) *Management_UpdateAvatar_Call {
-	_c.Call.Return(run)
-	return _c
+	return r0, r1, r2
 }
 
 // UpdateUser provides a mock function with given fields: ctx, _a1
@@ -320,35 +172,6 @@ func (_m *Management) UpdateUser(ctx context.Context, _a1 *domain.User) error {
 	}
 
 	return r0
-}
-
-// Management_UpdateUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUser'
-type Management_UpdateUser_Call struct {
-	*mock.Call
-}
-
-// UpdateUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - _a1 *domain.User
-func (_e *Management_Expecter) UpdateUser(ctx interface{}, _a1 interface{}) *Management_UpdateUser_Call {
-	return &Management_UpdateUser_Call{Call: _e.mock.On("UpdateUser", ctx, _a1)}
-}
-
-func (_c *Management_UpdateUser_Call) Run(run func(ctx context.Context, _a1 *domain.User)) *Management_UpdateUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*domain.User))
-	})
-	return _c
-}
-
-func (_c *Management_UpdateUser_Call) Return(_a0 error) *Management_UpdateUser_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Management_UpdateUser_Call) RunAndReturn(run func(context.Context, *domain.User) error) *Management_UpdateUser_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // NewManagement creates a new instance of Management. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

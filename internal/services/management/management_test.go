@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"os"
 	"testing"
 )
 
@@ -121,27 +120,49 @@ func TestManagement_DeleteUser_ErrUnexpected(t *testing.T) {
 func TestManagement_UpdateAvatar(t *testing.T) {
 	suite := Setup(t)
 
-	avatar := "avatar1"
-	user := &domain.User{ID: 1, AvatarURL: avatar}
-	image, err := os.ReadFile("../../../tests/image/test_image.jpg")
-	require.NoError(t, err, "failed to read test image")
+	tests := []struct {
+		name                  string
+		user                  *domain.User
+		newAvatarUrl          string
+		expectedPrevAvatarUrl string
+	}{
+		{
+			name:                  "Update avatar",
+			user:                  &domain.User{ID: 1, AvatarURL: "avatar1"},
+			newAvatarUrl:          "imagine_image_url",
+			expectedPrevAvatarUrl: "avatar1",
+		},
+		{
+			name:                  "user doesn't have previous avatar",
+			user:                  &domain.User{ID: 2},
+			newAvatarUrl:          "imagine_image_url",
+			expectedPrevAvatarUrl: "",
+		},
+		{
+			name:                  "user doesn't have previous avatar 2",
+			user:                  &domain.User{ID: 3},
+			newAvatarUrl:          "imagine_image_url_2",
+			expectedPrevAvatarUrl: "",
+		},
+	}
 
-	suite.MockUserStorage.On("GetUserByID", mock.Anything, user.ID).Return(user, nil)
-	suite.MockImageStorage.On("DeleteImage", mock.Anything, avatar).Return(nil)
-	suite.MockImageStorage.On("UploadImage", mock.Anything, mock.Anything, mock.Anything).Return("avatar2", nil)
-	suite.MockUserStorage.On("UpdateUser", mock.Anything, user).Return(nil)
-	suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
+			suite.MockUserStorage.On("UpdateUser", mock.Anything, tt.user).Return(nil)
+			suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	userGot, err := suite.Management.UpdateAvatar(context.Background(), user.ID, image)
+			userGot, prevImageUrl, err := suite.Management.UpdateAvatar(context.Background(), tt.user.ID, tt.newAvatarUrl)
 
-	require.NoError(t, err)
-	assert.Equal(t, "avatar2", userGot.AvatarURL)
+			require.NoError(t, err)
+			assert.Equal(t, tt.newAvatarUrl, userGot.AvatarURL)
+			assert.Equal(t, tt.expectedPrevAvatarUrl, prevImageUrl)
 
-	suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, user.ID)
-	suite.MockImageStorage.AssertCalled(t, "DeleteImage", mock.Anything, avatar)
-	suite.MockImageStorage.AssertCalled(t, "UploadImage", mock.Anything, mock.Anything, mock.Anything)
-	suite.MockUserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
-	suite.MockAmqp.AssertCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.user.ID)
+			suite.MockUserStorage.AssertCalled(t, "UpdateUser", mock.Anything, tt.user)
+		})
+	}
 
 }
 
@@ -150,21 +171,17 @@ func TestManagement_UpdateAvatar_UserDoesNotExist(t *testing.T) {
 
 	avatar := "avatar1"
 	user := &domain.User{ID: 1, AvatarURL: avatar}
-	image, err := os.ReadFile("../../../tests/image/test_image.jpg")
-	require.NoError(t, err, "failed to read test image")
+	imageUrl := "imagine_image_url"
 
 	suite.MockUserStorage.On("GetUserByID", mock.Anything, user.ID).Return(&domain.User{}, storage.ErrUserNotExists)
 
-	userGot, err := suite.Management.UpdateAvatar(context.Background(), user.ID, image)
+	userGot, _, err := suite.Management.UpdateAvatar(context.Background(), user.ID, imageUrl)
 
 	require.ErrorIs(t, err, ErrUserNotExist)
 	assert.Nil(t, userGot)
 
 	suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, user.ID)
-	suite.MockImageStorage.AssertNotCalled(t, "DeleteImage", mock.Anything, avatar)
-	suite.MockImageStorage.AssertNotCalled(t, "UploadImage", mock.Anything, mock.Anything, mock.Anything)
 	suite.MockUserStorage.AssertNotCalled(t, "UpdateUser", mock.Anything, user)
-	suite.MockAmqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestManagement_SearchUsers(t *testing.T) {
@@ -232,38 +249,38 @@ func TestManagement_ChangeUserRole_HappyPath(t *testing.T) {
 		},
 		{
 			name:   "Change role to USER",
-			user:   &domain.User{ID: 1, Role: "DSVR"},
-			target: &domain.User{ID: 2, Role: "ADMIN"},
+			user:   &domain.User{ID: 3, Role: "DSVR"},
+			target: &domain.User{ID: 4, Role: "ADMIN"},
 			role:   "USER",
 		},
 		{
 			name:   "Change role to MODER",
-			user:   &domain.User{ID: 1, Role: "DSVR"},
-			target: &domain.User{ID: 2, Role: "ADMIN"},
+			user:   &domain.User{ID: 5, Role: "DSVR"},
+			target: &domain.User{ID: 6, Role: "ADMIN"},
 			role:   "MODER",
 		},
 		{
 			name:   "Change role to MODER",
-			user:   &domain.User{ID: 1, Role: "DSVR"},
-			target: &domain.User{ID: 2, Role: "USER"},
+			user:   &domain.User{ID: 7, Role: "DSVR"},
+			target: &domain.User{ID: 8, Role: "USER"},
 			role:   "MODER",
 		},
 		{
 			name:   "Change role to MODER",
-			user:   &domain.User{ID: 1, Role: "DSVR"},
-			target: &domain.User{ID: 2, Role: "USER"},
+			user:   &domain.User{ID: 9, Role: "DSVR"},
+			target: &domain.User{ID: 10, Role: "USER"},
 			role:   "MODER",
 		},
 		{
 			name:   "Change role to MODER",
-			user:   &domain.User{ID: 1, Role: "ADMIN"},
-			target: &domain.User{ID: 2, Role: "USER"},
+			user:   &domain.User{ID: 11, Role: "ADMIN"},
+			target: &domain.User{ID: 12, Role: "USER"},
 			role:   "MODER",
 		},
 		{
 			name:   "Change role to USER",
-			user:   &domain.User{ID: 1, Role: "ADMIN"},
-			target: &domain.User{ID: 2, Role: "MODER"},
+			user:   &domain.User{ID: 13, Role: "ADMIN"},
+			target: &domain.User{ID: 14, Role: "MODER"},
 			role:   "USER",
 		},
 	}

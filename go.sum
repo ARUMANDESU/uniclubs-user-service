@@ -1,5 +1,11 @@
 github.com/ARUMANDESU/uniclubs-protos v0.3.0 h1:TuBnmzh+n8rLdtVy7ZmVWj0zTaWZh+p1ZWoxkd/3msw=
 github.com/ARUMANDESU/uniclubs-protos v0.3.0/go.mod h1:Isf2QP9zEZIGAIffCnTbDRY8A/S7lpyofaC9c5vva50=
+github.com/ARUMANDESU/uniclubs-protos v0.3.6 h1:SttTN4CotUWN2xyYHglsOCe8SjuTzj81fCITKdT0vf8=
+github.com/ARUMANDESU/uniclubs-protos v0.3.6/go.mod h1:Isf2QP9zEZIGAIffCnTbDRY8A/S7lpyofaC9c5vva50=
+github.com/ARUMANDESU/uniclubs-protos v0.3.7 h1:r85r9R0qUivb7Fiyh4kHaGenwKzjweKNsUylWuiBevM=
+github.com/ARUMANDESU/uniclubs-protos v0.3.7/go.mod h1:Isf2QP9zEZIGAIffCnTbDRY8A/S7lpyofaC9c5vva50=
+github.com/ARUMANDESU/uniclubs-protos v0.3.8 h1:Bfx1HJiAszdMrukYpbwWC2ie9mMwS1/hrSbuQClVMxc=
+github.com/ARUMANDESU/uniclubs-protos v0.3.8/go.mod h1:Isf2QP9zEZIGAIffCnTbDRY8A/S7lpyofaC9c5vva50=
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 h1:L/gRVlceqvL25UVaW/CKtUDjefjrs0SPonmDGUVOYP0=
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/BurntSushi/toml v1.2.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=

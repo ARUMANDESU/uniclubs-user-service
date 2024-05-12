@@ -2,7 +2,6 @@ package app
 
 import (
 	grpcapp "github.com/ARUMANDESU/uniclubs-user-service/internal/app/grpc"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/clients/awsS3"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
@@ -43,14 +42,8 @@ func New(log *slog.Logger, cfg *config.Config, awsCfg aws.Config) *App {
 		panic(err)
 	}
 
-	awsS3Client, err := awsS3.New(awsCfg, cfg.AWS)
-	if err != nil {
-		l.Error("failed to create aws s3 client", logger.Err(err))
-		panic(err)
-	}
-
 	authService := auth.New(log, cfg.Jwt, postgres, redisStorage, redisStorage, rabbitMQ)
-	managementService := management.New(log, postgres, awsS3Client, rabbitMQ)
+	managementService := management.New(log, postgres, rabbitMQ)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
 

@@ -8,10 +8,8 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
-	imageUtils "github.com/ARUMANDESU/uniclubs-user-service/pkg/image"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"log/slog"
-	"path"
 	"time"
 )
 
@@ -21,19 +19,13 @@ var (
 )
 
 type Management struct {
-	log          *slog.Logger
-	usrStorage   UserStorage
-	imageStorage ImageStorage
-	amqp         Amqp
+	log        *slog.Logger
+	usrStorage UserStorage
+	amqp       Amqp
 }
 
 type Amqp interface {
 	Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error
-}
-
-type ImageStorage interface {
-	UploadImage(ctx context.Context, image []byte, filename string) (string, error)
-	DeleteImage(ctx context.Context, filename string) error
 }
 
 type UserStorage interface {
@@ -44,12 +36,11 @@ type UserStorage interface {
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
 }
 
-func New(log *slog.Logger, storage UserStorage, imageStorage ImageStorage, amqp Amqp) *Management {
+func New(log *slog.Logger, storage UserStorage, amqp Amqp) *Management {
 	return &Management{
-		log:          log,
-		usrStorage:   storage,
-		imageStorage: imageStorage,
-		amqp:         amqp,
+		log:        log,
+		usrStorage: storage,
+		amqp:       amqp,
 	}
 }
 
@@ -147,82 +138,55 @@ func (m Management) SearchUsers(ctx context.Context, query string, filters domai
 
 }
 
-func (m Management) UpdateAvatar(ctx context.Context, userID int64, image []byte) (*domain.User, error) {
+func (m Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl string) (user *domain.User, prevImage string, err error) {
 	const op = "service.management.updateAvatar"
 	log := m.log.With(slog.String("op", op))
 
-	user, err := m.usrStorage.GetUserByID(ctx, userID)
+	user, err = m.usrStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
-			return nil, ErrUserNotExist
+			return nil, "", ErrUserNotExist
 		default:
 			log.Error("failed to get user", logger.Err(err))
-			return nil, err
+			return nil, "", err
 		}
 	}
 
-	// Delete previous avatar
 	if user.AvatarURL != "" {
-		// path.Base returns the last element of the path: object key
-		err = m.imageStorage.DeleteImage(ctx, path.Base(user.AvatarURL))
-		if err != nil {
-			log.Error("failed to delete previous avatar", logger.Err(err))
-			return nil, err
-		}
+		prevImage = user.AvatarURL
 	}
 
-	// Compress image
-	compressImage, filename, err := imageUtils.CompressImage(image, 75)
-	if err != nil {
-		switch {
-		case errors.Is(err, domain.ErrImageQuality),
-			errors.Is(err, domain.ErrImageFormat),
-			errors.Is(err, domain.ErrImageIsEmpty):
-			return nil, err
-		default:
-			log.Error("failed to compress image", logger.Err(err))
-			return nil, err
-		}
-	}
-
-	imageCtx, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
-
-	url, err := m.imageStorage.UploadImage(imageCtx, compressImage, filename)
-	if err != nil {
-		log.Error("failed to upload avatar", logger.Err(err))
-		return nil, err
-	}
-	user.AvatarURL = url
+	user.AvatarURL = imageUrl
 
 	err = m.usrStorage.UpdateUser(ctx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, storage.ErrUserNotExists):
 			log.Warn("user not found while updating avatar", logger.Err(err))
-			return nil, ErrUserNotExist
+			return nil, "", ErrUserNotExist
 		default:
 			log.Error("failed to update user avatar url", logger.Err(err))
-			return nil, err
+			return nil, "", err
 		}
 	}
 
-	msg := struct {
-		ID        int64   `json:"id"`
-		AvatarURL *string `json:"avatar_url"`
-	}{
-		ID:        user.ID,
-		AvatarURL: &user.AvatarURL,
-	}
+	go func() {
+		msg := struct {
+			ID        int64   `json:"id"`
+			AvatarURL *string `json:"avatar_url"`
+		}{
+			ID:        user.ID,
+			AvatarURL: &user.AvatarURL,
+		}
 
-	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, msg)
-	if err != nil {
-		log.Error("failed to publish user updated event", logger.Err(err))
-		return nil, err
-	}
+		err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, msg)
+		if err != nil {
+			log.Error("failed to publish user updated event", logger.Err(err))
+		}
+	}()
 
-	return user, nil
+	return user, prevImage, nil
 }
 
 func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error {
