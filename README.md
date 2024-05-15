@@ -1,7 +1,7 @@
 # UMS User Service
 
 ## Overview
-This service is part of the University Club Management application, focusing on user management and authentication.
+This service is part of the University Clubs Management application, focusing on user management and authentication.
 It handles operations such as user registration, authentication, role management, and more.
 
 ## Features
