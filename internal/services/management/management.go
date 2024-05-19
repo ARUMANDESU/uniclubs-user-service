@@ -79,19 +79,7 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 		}
 	}
 
-	msg := struct {
-		ID        int64   `json:"id"`
-		FirstName *string `json:"first_name"`
-		LastName  *string `json:"last_name"`
-		AvatarURL *string `json:"avatar_url"`
-	}{
-		ID:        user.ID,
-		FirstName: &user.FirstName,
-		LastName:  &user.LastName,
-		AvatarURL: &user.AvatarURL,
-	}
-
-	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, msg)
+	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, user)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
 		return err
@@ -172,15 +160,8 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl str
 	}
 
 	go func() {
-		msg := struct {
-			ID        int64   `json:"id"`
-			AvatarURL *string `json:"avatar_url"`
-		}{
-			ID:        user.ID,
-			AvatarURL: &user.AvatarURL,
-		}
-
-		err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, msg)
+		user := user
+		err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, user)
 		if err != nil {
 			log.Error("failed to publish user updated event", logger.Err(err))
 		}

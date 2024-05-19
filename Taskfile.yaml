@@ -1,7 +1,7 @@
 version: "3"
 
 vars:
-  DATABASE_DSN: "postgresql://postgres:admin@localhost:5432/user_service"
+  DATABASE_DSN: "postgresql://postgres:password@localhost:5432/userdb"
 
 tasks:
   run:local:
@@ -25,7 +25,7 @@ tasks:
     cmd: docker build -t arumandesu/user-service -t arumandesu/user-service:0.0.8 . && docker push arumandesu/user-service -a
 
   migrate:up:
-    cmd: migrate -path ./migrations -database {{.DATABASE_DSN}} up
+    cmd: migrate -path ./migrations -database {{.DATABASE_DSN}}?sslmode=disable up
 
   migrate:down:
     cmd: migrate -path ./migrations -database {{.DATABASE_DSN}} down
