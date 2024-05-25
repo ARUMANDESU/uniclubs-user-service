@@ -65,9 +65,15 @@ func GetUserIDFromToken(tokenString string, secret string) (int64, error) {
 			return 0, ErrTokenSignatureIsInvalid
 		case strings.Contains(errorMessage, "token is expired"):
 			return 0, ErrTokenIsExpired
+		case strings.Contains(errorMessage, "token contains an invalid number of segments"):
+			return 0, ErrTokenIsNotValid
 		default:
 			return 0, err
 		}
+	}
+
+	if token == nil {
+		return 0, ErrTokenIsNotValid
 	}
 
 	// Check if the token is valid

@@ -152,13 +152,14 @@ func (s serverApi) RefreshToken(ctx context.Context, req *userv1.RefreshTokenReq
 		switch {
 		case errors.Is(err, auth.ErrUserNotExist):
 			return nil, status.Error(codes.NotFound, "user not found")
-		case errors.Is(err, auth.ErrRefreshTokenNotExists),
-			errors.Is(err, jwt.ErrUserIDMismatch),
+		case errors.Is(err, jwt.ErrUserIDMismatch),
 			errors.Is(err, jwt.ErrTokenIsNotValid),
 			errors.Is(err, jwt.ErrInvalidTokenClaims),
 			errors.Is(err, jwt.ErrUserIDClaimNotFound),
 			errors.Is(err, jwt.ErrTokenSignatureIsInvalid):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
+		case errors.Is(err, auth.ErrRefreshTokenNotExists):
+			return nil, status.Error(codes.NotFound, err.Error())
 		case errors.Is(err, auth.ErrUserNotExist):
 		default:
 			return nil, status.Error(codes.Internal, err.Error())
