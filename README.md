@@ -14,7 +14,6 @@
   <summary>Table of Contents</summary>
   <ol>
     <li><a href="#about-the-project">About The Project</a></li>
-    <li><a href="#other-microservices">Other Microservices</a></li>
     <li><a href="#protofiles">Protofiles</a></li>
     <li><a href="#technologies-used">Technologies Used</a></li>
     <li><a href="#getting-started">Getting Started</a></li>
@@ -48,6 +47,7 @@ It handles operations such as user registration, authentication, global role man
 * [![PostgreSQL][postgres-shield]][postgres-url]
 * [![Redis][redis-shield]][redis-url]
 * [![gRPC][grpc-shield]][go-url]
+* [![RabbitMQ][rabbitmq-shield]][rabbitmq-url]
 * [![Docker][docker-shield]][docker-url]
 * [![Docker Compose][docker-compose-shield]][docker-compose-url]
 * [![Taskfile][tasks-shield]][tasks-url]
@@ -146,6 +146,7 @@ task env
 [postgres-url]: https://www.postgresql.org/
 [grpc-url]: https://grpc.io/
 [tasks-url]: https://taskfile.dev/
+[rabbitmq-url]: https://www.rabbitmq.com/
 
 [go-shield]: https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white
 [docker-shield]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
@@ -154,3 +155,4 @@ task env
 [postgres-shield]: https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white
 [grpc-shield]: https://img.shields.io/badge/gRPC-008FC7?style=for-the-badge&logo=google&logoColor=white
 [tasks-shield]: https://img.shields.io/badge/Taskfile-00ADD8?style=for-the-badge&logo=go&logoColor=white
+[rabbitmq-shield]: https://img.shields.io/badge/RabbitMQ-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white
