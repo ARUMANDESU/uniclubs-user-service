@@ -3,21 +3,44 @@ package management
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
+	"testing"
+
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/management/mocks"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
+
+type Suite struct {
+	Management *Management
+	*mocks.UserStorage
+	*mocks.Amqp
+}
+
+func Setup(t *testing.T) *Suite {
+	t.Helper()
+	UserStorage := mocks.NewUserStorage(t)
+	Amqp := mocks.NewAmqp(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	return &Suite{
+		Management:  New(logger, UserStorage, Amqp),
+		UserStorage: UserStorage,
+		Amqp:        Amqp,
+	}
+}
 
 func TestManagement_GetUser(t *testing.T) {
 	t.Log("TestManagement_GetUser")
 
 	suite := Setup(t)
 
-	suite.MockUserStorage.On("GetUserByID", mock.Anything, int64(1)).Return(&domain.User{}, nil)
+	suite.UserStorage.On("GetUserByID", mock.Anything, int64(1)).Return(&domain.User{}, nil)
 
 	user, err := suite.Management.GetUser(context.Background(), 1)
 
@@ -25,96 +48,96 @@ func TestManagement_GetUser(t *testing.T) {
 
 	assert.Equal(t, &domain.User{}, user)
 
-	suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, int64(1))
+	suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, int64(1))
 }
 
 func TestManagement_GetUser_NotFound(t *testing.T) {
 	suite := Setup(t)
 
-	suite.MockUserStorage.On("GetUserByID", mock.Anything, int64(1)).Return(&domain.User{}, storage.ErrUserNotExists)
+	suite.UserStorage.On("GetUserByID", mock.Anything, int64(1)).Return(&domain.User{}, storage.ErrUserNotExists)
 
 	user, err := suite.Management.GetUser(context.Background(), 1)
 	require.ErrorIs(t, err, ErrUserNotExist)
 
 	assert.Nil(t, user)
 
-	suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, int64(1))
+	suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, int64(1))
 }
 
 func TestManagement_UpdateUser_UserExists(t *testing.T) {
 	suite := Setup(t)
 
 	user := &domain.User{ID: 1}
-	suite.MockUserStorage.On("GetUserByID", mock.Anything, user.ID).Return(user, nil)
-	suite.MockUserStorage.On("UpdateUser", mock.Anything, user).Return(nil)
-	suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(user, nil)
+	suite.UserStorage.On("UpdateUser", mock.Anything, user).Return(nil)
+	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := suite.Management.UpdateUser(context.Background(), user)
 
 	require.NoError(t, err)
-	suite.MockUserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
+	suite.UserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
 }
 
 func TestManagement_UpdateUser_UserDoesNotExist(t *testing.T) {
 	suite := Setup(t)
 
 	user := &domain.User{ID: 1}
-	suite.MockUserStorage.On("GetUserByID", mock.Anything, user.ID).Return(nil, storage.ErrUserNotExists)
-	suite.MockUserStorage.On("UpdateUser", mock.Anything, user).Return(storage.ErrUserNotExists)
-	suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(nil, storage.ErrUserNotExists)
+	suite.UserStorage.On("UpdateUser", mock.Anything, user).Return(storage.ErrUserNotExists)
+	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := suite.Management.UpdateUser(context.Background(), user)
 
 	assert.ErrorIs(t, err, ErrUserNotExist)
 
-	suite.MockAmqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	suite.MockUserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
+	suite.Amqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	suite.UserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
 }
 
 func TestManagement_DeleteUser_UserExists(t *testing.T) {
 	suite := Setup(t)
 
 	user := &domain.User{ID: 1}
-	suite.MockUserStorage.On("GetUserByID", mock.Anything, user.ID).Return(user, nil)
-	suite.MockUserStorage.On("DeleteUserByID", mock.Anything, user.ID).Return(nil)
-	suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(user, nil)
+	suite.UserStorage.On("DeleteUserByID", mock.Anything, user.ID).Return(nil)
+	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := suite.Management.DeleteUser(context.Background(), user.ID)
 
 	require.NoError(t, err)
-	suite.MockUserStorage.AssertCalled(t, "DeleteUserByID", mock.Anything, user.ID)
-	suite.MockAmqp.AssertCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	suite.UserStorage.AssertCalled(t, "DeleteUserByID", mock.Anything, user.ID)
+	suite.Amqp.AssertCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestManagement_DeleteUser_UserDoesNotExist(t *testing.T) {
 	suite := Setup(t)
 
 	user := &domain.User{ID: 1}
-	suite.MockUserStorage.On("DeleteUserByID", mock.Anything, user.ID).Return(storage.ErrUserNotExists)
-	suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.UserStorage.On("DeleteUserByID", mock.Anything, user.ID).Return(storage.ErrUserNotExists)
+	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := suite.Management.DeleteUser(context.Background(), user.ID)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrUserNotExist)
 
-	suite.MockAmqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	suite.MockUserStorage.AssertCalled(t, "DeleteUserByID", mock.Anything, user.ID)
+	suite.Amqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	suite.UserStorage.AssertCalled(t, "DeleteUserByID", mock.Anything, user.ID)
 }
 
 func TestManagement_DeleteUser_ErrUnexpected(t *testing.T) {
 	suite := Setup(t)
 
 	user := &domain.User{ID: 1}
-	suite.MockUserStorage.On("DeleteUserByID", mock.Anything, user.ID).Return(errors.New("unexpected"))
-	suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.UserStorage.On("DeleteUserByID", mock.Anything, user.ID).Return(errors.New("unexpected"))
+	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := suite.Management.DeleteUser(context.Background(), user.ID)
 
 	require.Error(t, err)
 
-	suite.MockAmqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	suite.MockUserStorage.AssertCalled(t, "DeleteUserByID", mock.Anything, user.ID)
+	suite.Amqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	suite.UserStorage.AssertCalled(t, "DeleteUserByID", mock.Anything, user.ID)
 }
 
 func TestManagement_UpdateAvatar(t *testing.T) {
@@ -149,9 +172,9 @@ func TestManagement_UpdateAvatar(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
-			suite.MockUserStorage.On("UpdateUser", mock.Anything, tt.user).Return(nil)
-			suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			suite.UserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
+			suite.UserStorage.On("UpdateUser", mock.Anything, tt.user).Return(nil)
+			suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 			userGot, prevImageUrl, err := suite.Management.UpdateAvatar(context.Background(), tt.user.ID, tt.newAvatarUrl)
 
@@ -159,8 +182,8 @@ func TestManagement_UpdateAvatar(t *testing.T) {
 			assert.Equal(t, tt.newAvatarUrl, userGot.AvatarURL)
 			assert.Equal(t, tt.expectedPrevAvatarUrl, prevImageUrl)
 
-			suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.user.ID)
-			suite.MockUserStorage.AssertCalled(t, "UpdateUser", mock.Anything, tt.user)
+			suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.user.ID)
+			suite.UserStorage.AssertCalled(t, "UpdateUser", mock.Anything, tt.user)
 		})
 	}
 
@@ -173,15 +196,15 @@ func TestManagement_UpdateAvatar_UserDoesNotExist(t *testing.T) {
 	user := &domain.User{ID: 1, AvatarURL: avatar}
 	imageUrl := "imagine_image_url"
 
-	suite.MockUserStorage.On("GetUserByID", mock.Anything, user.ID).Return(&domain.User{}, storage.ErrUserNotExists)
+	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(&domain.User{}, storage.ErrUserNotExists)
 
 	userGot, _, err := suite.Management.UpdateAvatar(context.Background(), user.ID, imageUrl)
 
 	require.ErrorIs(t, err, ErrUserNotExist)
 	assert.Nil(t, userGot)
 
-	suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, user.ID)
-	suite.MockUserStorage.AssertNotCalled(t, "UpdateUser", mock.Anything, user)
+	suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, user.ID)
+	suite.UserStorage.AssertNotCalled(t, "UpdateUser", mock.Anything, user)
 }
 
 func TestManagement_SearchUsers(t *testing.T) {
@@ -201,7 +224,7 @@ func TestManagement_SearchUsers(t *testing.T) {
 		TotalRecords: 1,
 	}
 
-	suite.MockUserStorage.On("GetAll", mock.Anything, query, filters).Return(users, metadata, nil)
+	suite.UserStorage.On("GetAll", mock.Anything, query, filters).Return(users, metadata, nil)
 
 	usersGot, metadataGot, err := suite.Management.SearchUsers(context.Background(), query, filters)
 
@@ -209,7 +232,7 @@ func TestManagement_SearchUsers(t *testing.T) {
 	assert.Equal(t, users, usersGot)
 	assert.Equal(t, metadata, metadataGot)
 
-	suite.MockUserStorage.AssertCalled(t, "GetAll", mock.Anything, query, filters)
+	suite.UserStorage.AssertCalled(t, "GetAll", mock.Anything, query, filters)
 }
 
 func TestManagement_SearchUsers_Err(t *testing.T) {
@@ -221,7 +244,7 @@ func TestManagement_SearchUsers_Err(t *testing.T) {
 		PageSize: 1,
 	}
 
-	suite.MockUserStorage.On("GetAll", mock.Anything, query, filters).Return([]*domain.User{}, domain.Metadata{}, errors.New("unexpected"))
+	suite.UserStorage.On("GetAll", mock.Anything, query, filters).Return([]*domain.User{}, domain.Metadata{}, errors.New("unexpected"))
 
 	usersGot, metadataGot, err := suite.Management.SearchUsers(context.Background(), query, filters)
 
@@ -229,7 +252,7 @@ func TestManagement_SearchUsers_Err(t *testing.T) {
 	assert.Nil(t, usersGot)
 	assert.Equal(t, domain.Metadata{}, metadataGot)
 
-	suite.MockUserStorage.AssertCalled(t, "GetAll", mock.Anything, query, filters)
+	suite.UserStorage.AssertCalled(t, "GetAll", mock.Anything, query, filters)
 }
 
 func TestManagement_ChangeUserRole_HappyPath(t *testing.T) {
@@ -293,19 +316,19 @@ func TestManagement_ChangeUserRole_HappyPath(t *testing.T) {
 				TargetID: tt.target.ID,
 				Role:     tt.role,
 			}
-			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
-			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.target.ID).Return(tt.target, nil)
-			suite.MockUserStorage.On("UpdateUserRole", mock.Anything, tt.target.ID, tt.role).Return(nil)
-			suite.MockAmqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			suite.UserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
+			suite.UserStorage.On("GetUserByID", mock.Anything, tt.target.ID).Return(tt.target, nil)
+			suite.UserStorage.On("UpdateUserRole", mock.Anything, tt.target.ID, tt.role).Return(nil)
+			suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 			err := suite.Management.ChangeUserRole(context.Background(), dto)
 
 			require.NoError(t, err)
 
-			suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.user.ID)
-			suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.target.ID)
-			suite.MockUserStorage.AssertCalled(t, "UpdateUserRole", mock.Anything, tt.target.ID, tt.role)
-			suite.MockAmqp.AssertCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.user.ID)
+			suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.target.ID)
+			suite.UserStorage.AssertCalled(t, "UpdateUserRole", mock.Anything, tt.target.ID, tt.role)
+			suite.Amqp.AssertCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
 }
@@ -414,15 +437,15 @@ func TestManagement_ChangeUserRole_FailPath(t *testing.T) {
 				TargetID: tt.target.ID,
 				Role:     tt.role,
 			}
-			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
-			suite.MockUserStorage.On("GetUserByID", mock.Anything, tt.target.ID).Return(tt.target, nil)
+			suite.UserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
+			suite.UserStorage.On("GetUserByID", mock.Anything, tt.target.ID).Return(tt.target, nil)
 
 			err := suite.Management.ChangeUserRole(context.Background(), dto)
 			require.ErrorIs(t, err, tt.expectedErr)
 
-			suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, mock.AnythingOfType("int64"))
-			suite.MockUserStorage.AssertNotCalled(t, "UpdateUserRole", mock.Anything, tt.target.ID, tt.role)
-			suite.MockAmqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, mock.AnythingOfType("int64"))
+			suite.UserStorage.AssertNotCalled(t, "UpdateUserRole", mock.Anything, tt.target.ID, tt.role)
+			suite.Amqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
 }

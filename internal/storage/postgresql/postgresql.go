@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"time"
 )
 
 type Storage struct {
@@ -293,6 +294,27 @@ func (s *Storage) UpdateUserRole(ctx context.Context, userID int64, role string)
 	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+	}
+
+	return nil
+}
+
+func (s *Storage) DeleteNonActivatedUsers(ctx context.Context, days int) error {
+	const op = "storage.postgresql.deleteNonActivatedUsers"
+
+	query := `
+		DELETE FROM users
+		WHERE NOT activated AND created_at < NOW() - $1::interval;
+	`
+
+	result, err := s.DB.ExecContext(ctx, query, fmt.Sprintf("%d days", days))
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil

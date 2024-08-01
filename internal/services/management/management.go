@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
-	"log/slog"
-	"time"
 )
 
 var (
@@ -24,16 +25,19 @@ type Management struct {
 	amqp       Amqp
 }
 
+//go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=Amqp
 type Amqp interface {
 	Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error
 }
 
+//go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=UserStorage
 type UserStorage interface {
 	GetUserByID(ctx context.Context, userID int64) (user *domain.User, err error)
 	UpdateUser(ctx context.Context, user *domain.User) error
 	UpdateUserRole(ctx context.Context, userID int64, role string) error
 	DeleteUserByID(ctx context.Context, userID int64) error
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
+	DeleteNonActivatedUsers(ctx context.Context, days int) error
 }
 
 func New(log *slog.Logger, storage UserStorage, amqp Amqp) *Management {
@@ -233,4 +237,26 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 	}
 
 	return nil
+}
+
+func (m Management) DeleteNonActivatedUsers(ctx context.Context, days int) error {
+	const op = "service.management.deleteNonActivatedUsers"
+	log := m.log.With(slog.String("op", op))
+
+	err := m.usrStorage.DeleteNonActivatedUsers(ctx, days)
+	if err != nil {
+		return handleError(err, log, "failed to delete inactived users")
+	}
+
+	return nil
+}
+
+func handleError(err error, log *slog.Logger, op string) error {
+	switch {
+	case errors.Is(err, storage.ErrUserNotExists):
+		return ErrUserNotExist
+	default:
+		log.Error(op, logger.Err(err))
+		return err
+	}
 }

@@ -1,6 +1,9 @@
 package app
 
 import (
+	"log/slog"
+
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/app/cron"
 	grpcapp "github.com/ARUMANDESU/uniclubs-user-service/internal/app/grpc"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
@@ -9,12 +12,12 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/postgresql"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage/redis"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
-	"log/slog"
 )
 
 type App struct {
-	GRPCSrv  *grpcapp.App
 	log      *slog.Logger
+	GRPCSrv  *grpcapp.App
+	CronJobs *cron.App
 	postgres *postgresql.Storage
 	redis    *redis.Storage
 	rabbitMQ *rabbitmq.Rabbitmq
@@ -45,8 +48,20 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	managementService := management.New(log, postgres, rabbitMQ)
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
+	cronApp, err := cron.New(log, managementService)
+	if err != nil {
+		l.Error("failed to create cron jobs", logger.Err(err))
+		panic(err)
+	}
 
-	return &App{GRPCSrv: grpcApp, log: log, postgres: postgres, redis: redisStorage, rabbitMQ: rabbitMQ}
+	return &App{
+		log:      log,
+		GRPCSrv:  grpcApp,
+		CronJobs: cronApp,
+		postgres: postgres,
+		redis:    redisStorage,
+		rabbitMQ: rabbitMQ,
+	}
 }
 
 func (a *App) Close() {

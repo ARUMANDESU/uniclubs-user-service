@@ -30,13 +30,15 @@ type Auth interface {
 
 func (s serverApi) Register(ctx context.Context, req *userv1.RegisterRequest) (*userv1.RegisterResponse, error) {
 
+	validMajors := []any{"STAFF", "SE", "MT", "IT", "CS", "BDA", "BDH", "ITM", "ITE", "EE", "IoT", "ST", "DJ", "MCs"}
+
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.Email, validation.Required, is.Email),
 		validation.Field(&req.Password, validation.Required, validation.Length(6, 64)),
 		validation.Field(&req.Barcode, validation.Required),
 		validation.Field(&req.FirstName, validation.Required),
 		validation.Field(&req.LastName, validation.Required),
-		validation.Field(&req.Major, validation.Required),
+		validation.Field(&req.Major, validation.Required, validation.In(validMajors...)),
 		validation.Field(&req.Year, validation.Required, validation.Min(1)),
 		validation.Field(&req.GroupName, validation.Required),
 	)

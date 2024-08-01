@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/app"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
-	"github.com/joho/godotenv"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/app"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -32,7 +33,9 @@ func main() {
 	)
 
 	application := app.New(log, cfg)
+
 	go application.GRPCSrv.MustRun()
+	application.CronJobs.Start()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)

@@ -16,14 +16,6 @@ type Auth struct {
 	mock.Mock
 }
 
-type Auth_Expecter struct {
-	mock *mock.Mock
-}
-
-func (_m *Auth) EXPECT() *Auth_Expecter {
-	return &Auth_Expecter{mock: &_m.Mock}
-}
-
 // ActivateUser provides a mock function with given fields: ctx, token
 func (_m *Auth) ActivateUser(ctx context.Context, token string) error {
 	ret := _m.Called(ctx, token)
@@ -40,35 +32,6 @@ func (_m *Auth) ActivateUser(ctx context.Context, token string) error {
 	}
 
 	return r0
-}
-
-// Auth_ActivateUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ActivateUser'
-type Auth_ActivateUser_Call struct {
-	*mock.Call
-}
-
-// ActivateUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - token string
-func (_e *Auth_Expecter) ActivateUser(ctx interface{}, token interface{}) *Auth_ActivateUser_Call {
-	return &Auth_ActivateUser_Call{Call: _e.mock.On("ActivateUser", ctx, token)}
-}
-
-func (_c *Auth_ActivateUser_Call) Run(run func(ctx context.Context, token string)) *Auth_ActivateUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *Auth_ActivateUser_Call) Return(_a0 error) *Auth_ActivateUser_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Auth_ActivateUser_Call) RunAndReturn(run func(context.Context, string) error) *Auth_ActivateUser_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // CheckUserRole provides a mock function with given fields: ctx, userId, roles
@@ -99,36 +62,6 @@ func (_m *Auth) CheckUserRole(ctx context.Context, userId int64, roles []uniclub
 	return r0, r1
 }
 
-// Auth_CheckUserRole_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckUserRole'
-type Auth_CheckUserRole_Call struct {
-	*mock.Call
-}
-
-// CheckUserRole is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userId int64
-//   - roles []uniclubs_user_service_v1_userv1.Role
-func (_e *Auth_Expecter) CheckUserRole(ctx interface{}, userId interface{}, roles interface{}) *Auth_CheckUserRole_Call {
-	return &Auth_CheckUserRole_Call{Call: _e.mock.On("CheckUserRole", ctx, userId, roles)}
-}
-
-func (_c *Auth_CheckUserRole_Call) Run(run func(ctx context.Context, userId int64, roles []uniclubs_user_service_v1_userv1.Role)) *Auth_CheckUserRole_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].([]uniclubs_user_service_v1_userv1.Role))
-	})
-	return _c
-}
-
-func (_c *Auth_CheckUserRole_Call) Return(_a0 bool, _a1 error) *Auth_CheckUserRole_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *Auth_CheckUserRole_Call) RunAndReturn(run func(context.Context, int64, []uniclubs_user_service_v1_userv1.Role) (bool, error)) *Auth_CheckUserRole_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Login provides a mock function with given fields: ctx, email, password
 func (_m *Auth) Login(ctx context.Context, email string, password string) (dtos.UserCredentialsDTO, error) {
 	ret := _m.Called(ctx, email, password)
@@ -157,36 +90,6 @@ func (_m *Auth) Login(ctx context.Context, email string, password string) (dtos.
 	return r0, r1
 }
 
-// Auth_Login_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Login'
-type Auth_Login_Call struct {
-	*mock.Call
-}
-
-// Login is a helper method to define mock.On call
-//   - ctx context.Context
-//   - email string
-//   - password string
-func (_e *Auth_Expecter) Login(ctx interface{}, email interface{}, password interface{}) *Auth_Login_Call {
-	return &Auth_Login_Call{Call: _e.mock.On("Login", ctx, email, password)}
-}
-
-func (_c *Auth_Login_Call) Run(run func(ctx context.Context, email string, password string)) *Auth_Login_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *Auth_Login_Call) Return(dto dtos.UserCredentialsDTO, err error) *Auth_Login_Call {
-	_c.Call.Return(dto, err)
-	return _c
-}
-
-func (_c *Auth_Login_Call) RunAndReturn(run func(context.Context, string, string) (dtos.UserCredentialsDTO, error)) *Auth_Login_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Logout provides a mock function with given fields: ctx, refreshToken
 func (_m *Auth) Logout(ctx context.Context, refreshToken string) error {
 	ret := _m.Called(ctx, refreshToken)
@@ -203,35 +106,6 @@ func (_m *Auth) Logout(ctx context.Context, refreshToken string) error {
 	}
 
 	return r0
-}
-
-// Auth_Logout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Logout'
-type Auth_Logout_Call struct {
-	*mock.Call
-}
-
-// Logout is a helper method to define mock.On call
-//   - ctx context.Context
-//   - refreshToken string
-func (_e *Auth_Expecter) Logout(ctx interface{}, refreshToken interface{}) *Auth_Logout_Call {
-	return &Auth_Logout_Call{Call: _e.mock.On("Logout", ctx, refreshToken)}
-}
-
-func (_c *Auth_Logout_Call) Run(run func(ctx context.Context, refreshToken string)) *Auth_Logout_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *Auth_Logout_Call) Return(_a0 error) *Auth_Logout_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *Auth_Logout_Call) RunAndReturn(run func(context.Context, string) error) *Auth_Logout_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // RefreshToken provides a mock function with given fields: ctx, rtToken, jwtToken
@@ -262,36 +136,6 @@ func (_m *Auth) RefreshToken(ctx context.Context, rtToken string, jwtToken strin
 	return r0, r1
 }
 
-// Auth_RefreshToken_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshToken'
-type Auth_RefreshToken_Call struct {
-	*mock.Call
-}
-
-// RefreshToken is a helper method to define mock.On call
-//   - ctx context.Context
-//   - rtToken string
-//   - jwtToken string
-func (_e *Auth_Expecter) RefreshToken(ctx interface{}, rtToken interface{}, jwtToken interface{}) *Auth_RefreshToken_Call {
-	return &Auth_RefreshToken_Call{Call: _e.mock.On("RefreshToken", ctx, rtToken, jwtToken)}
-}
-
-func (_c *Auth_RefreshToken_Call) Run(run func(ctx context.Context, rtToken string, jwtToken string)) *Auth_RefreshToken_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *Auth_RefreshToken_Call) Return(_a0 dtos.UserCredentialsDTO, _a1 error) *Auth_RefreshToken_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *Auth_RefreshToken_Call) RunAndReturn(run func(context.Context, string, string) (dtos.UserCredentialsDTO, error)) *Auth_RefreshToken_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Register provides a mock function with given fields: ctx, _a1
 func (_m *Auth) Register(ctx context.Context, _a1 *dtos.UserRegisterDTO) (int64, error) {
 	ret := _m.Called(ctx, _a1)
@@ -318,35 +162,6 @@ func (_m *Auth) Register(ctx context.Context, _a1 *dtos.UserRegisterDTO) (int64,
 	}
 
 	return r0, r1
-}
-
-// Auth_Register_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Register'
-type Auth_Register_Call struct {
-	*mock.Call
-}
-
-// Register is a helper method to define mock.On call
-//   - ctx context.Context
-//   - _a1 *dtos.UserRegisterDTO
-func (_e *Auth_Expecter) Register(ctx interface{}, _a1 interface{}) *Auth_Register_Call {
-	return &Auth_Register_Call{Call: _e.mock.On("Register", ctx, _a1)}
-}
-
-func (_c *Auth_Register_Call) Run(run func(ctx context.Context, _a1 *dtos.UserRegisterDTO)) *Auth_Register_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*dtos.UserRegisterDTO))
-	})
-	return _c
-}
-
-func (_c *Auth_Register_Call) Return(userID int64, err error) *Auth_Register_Call {
-	_c.Call.Return(userID, err)
-	return _c
-}
-
-func (_c *Auth_Register_Call) RunAndReturn(run func(context.Context, *dtos.UserRegisterDTO) (int64, error)) *Auth_Register_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // NewAuth creates a new instance of Auth. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
