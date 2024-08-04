@@ -10,7 +10,6 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/management/mocks"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -54,10 +53,10 @@ func TestManagement_GetUser(t *testing.T) {
 func TestManagement_GetUser_NotFound(t *testing.T) {
 	suite := Setup(t)
 
-	suite.UserStorage.On("GetUserByID", mock.Anything, int64(1)).Return(&domain.User{}, storage.ErrUserNotExists)
+	suite.UserStorage.On("GetUserByID", mock.Anything, int64(1)).Return(&domain.User{}, domain.ErrUserNotFound)
 
 	user, err := suite.Management.GetUser(context.Background(), 1)
-	require.ErrorIs(t, err, ErrUserNotExist)
+	require.ErrorIs(t, err, domain.ErrUserNotFound)
 
 	assert.Nil(t, user)
 
@@ -82,13 +81,13 @@ func TestManagement_UpdateUser_UserDoesNotExist(t *testing.T) {
 	suite := Setup(t)
 
 	user := &domain.User{ID: 1}
-	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(nil, storage.ErrUserNotExists)
-	suite.UserStorage.On("UpdateUser", mock.Anything, user).Return(storage.ErrUserNotExists)
+	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(nil, domain.ErrUserNotFound)
+	suite.UserStorage.On("UpdateUser", mock.Anything, user).Return(domain.ErrUserNotFound)
 	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := suite.Management.UpdateUser(context.Background(), user)
 
-	assert.ErrorIs(t, err, ErrUserNotExist)
+	assert.ErrorIs(t, err, domain.ErrUserNotFound)
 
 	suite.Amqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	suite.UserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
@@ -113,13 +112,13 @@ func TestManagement_DeleteUser_UserDoesNotExist(t *testing.T) {
 	suite := Setup(t)
 
 	user := &domain.User{ID: 1}
-	suite.UserStorage.On("DeleteUserByID", mock.Anything, user.ID).Return(storage.ErrUserNotExists)
+	suite.UserStorage.On("DeleteUserByID", mock.Anything, user.ID).Return(domain.ErrUserNotFound)
 	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := suite.Management.DeleteUser(context.Background(), user.ID)
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrUserNotExist)
+	assert.ErrorIs(t, err, domain.ErrUserNotFound)
 
 	suite.Amqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	suite.UserStorage.AssertCalled(t, "DeleteUserByID", mock.Anything, user.ID)
@@ -196,11 +195,11 @@ func TestManagement_UpdateAvatar_UserDoesNotExist(t *testing.T) {
 	user := &domain.User{ID: 1, AvatarURL: avatar}
 	imageUrl := "imagine_image_url"
 
-	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(&domain.User{}, storage.ErrUserNotExists)
+	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(&domain.User{}, domain.ErrUserNotFound)
 
 	userGot, _, err := suite.Management.UpdateAvatar(context.Background(), user.ID, imageUrl)
 
-	require.ErrorIs(t, err, ErrUserNotExist)
+	require.ErrorIs(t, err, domain.ErrUserNotFound)
 	assert.Nil(t, userGot)
 
 	suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, user.ID)
@@ -348,84 +347,84 @@ func TestManagement_ChangeUserRole_FailPath(t *testing.T) {
 			user:        &domain.User{ID: 1, Role: "MODER"},
 			target:      &domain.User{ID: 2, Role: "ADMIN"},
 			role:        "MODER",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "Moder change target role from DSVR to MODER, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "MODER"},
 			target:      &domain.User{ID: 2, Role: "DSVR"},
 			role:        "MODER",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "Moder change target role from DSVR to ADMIN, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "MODER"},
 			target:      &domain.User{ID: 2, Role: "DSVR"},
 			role:        "ADMIN",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "Moder change target role from DSVR to USER, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "MODER"},
 			target:      &domain.User{ID: 2, Role: "DSVR"},
 			role:        "USER",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "ADMIN change target role from USER to ADMIN, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "ADMIN"},
 			target:      &domain.User{ID: 2, Role: "USER"},
 			role:        "ADMIN",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "ADMIN change target role from USER to DSVR, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "ADMIN"},
 			target:      &domain.User{ID: 2, Role: "USER"},
 			role:        "DSVR",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "ADMIN change target role from MODER to DSVR, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "ADMIN"},
 			target:      &domain.User{ID: 2, Role: "MODER"},
 			role:        "DSVR",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "ADMIN change target role from MODER to ADMIN, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "ADMIN"},
 			target:      &domain.User{ID: 2, Role: "MODER"},
 			role:        "ADMIN",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "ADMIN change target role from DSVR to ADMIN, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "ADMIN"},
 			target:      &domain.User{ID: 2, Role: "DSVR"},
 			role:        "ADMIN",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "ADMIN change target role from ADMIN to DSVR, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "ADMIN"},
 			target:      &domain.User{ID: 2, Role: "ADMIN"},
 			role:        "DSVR",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "DSVR change target role from ADMIN to DSVR, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "DSVR"},
 			target:      &domain.User{ID: 2, Role: "ADMIN"},
 			role:        "DSVR",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 		{
 			name:        "DSVR change target role from ADMIN to DSVR, user unauthorized",
 			user:        &domain.User{ID: 1, Role: "DSVR"},
 			target:      &domain.User{ID: 2, Role: "MODER"},
 			role:        "DSVR",
-			expectedErr: ErrUserNonAuthorized,
+			expectedErr: domain.ErrUserNonAuthorized,
 		},
 	}
 

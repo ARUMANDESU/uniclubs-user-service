@@ -7,7 +7,6 @@ import (
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/management"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
@@ -39,8 +38,8 @@ func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest
 
 	user, err := s.management.GetUser(ctx, req.GetUserId())
 	if err != nil {
-		if errors.Is(err, management.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, status.Error(codes.NotFound, domain.ErrUserNotFound.Error())
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -63,10 +62,7 @@ func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest
 
 	err = s.management.UpdateUser(ctx, user)
 	if err != nil {
-		if errors.Is(err, management.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
-		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, handleError(err)
 	}
 
 	return user.ToUserObject(), nil
@@ -83,10 +79,7 @@ func (s serverApi) DeleteUser(ctx context.Context, req *userv1.DeleteUserRequest
 
 	err = s.management.DeleteUser(ctx, req.GetUserId())
 	if err != nil {
-		if errors.Is(err, management.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
-		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, handleError(err)
 	}
 
 	return &empty.Empty{}, nil
@@ -101,10 +94,7 @@ func (s serverApi) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*us
 
 	user, err := s.management.GetUser(ctx, req.GetUserId())
 	if err != nil {
-		if errors.Is(err, management.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
-		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, handleError(err)
 	}
 
 	return user.ToUserObject(), nil
@@ -126,7 +116,7 @@ func (s serverApi) SearchUsers(ctx context.Context, req *userv1.SearchUsersReque
 
 	users, metadata, err := s.management.SearchUsers(ctx, req.GetQuery(), f)
 	if err != nil {
-		return nil, status.Error(codes.Internal, ErrInternal.Error())
+		return nil, status.Error(codes.Internal, domain.ErrInternal.Error())
 	}
 
 	return &userv1.SearchUsersResponse{
@@ -152,12 +142,7 @@ func (s serverApi) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarReq
 
 	user, prevAvatarUrl, err := s.management.UpdateAvatar(ctx, req.GetUserId(), req.GetImageUrl())
 	if err != nil {
-		switch {
-		case errors.Is(err, management.ErrUserNotExist):
-			return nil, status.Error(codes.NotFound, err.Error())
-		default:
-			return nil, status.Error(codes.Internal, ErrInternal.Error())
-		}
+		return nil, handleError(err)
 	}
 
 	return &userv1.UpdateAvatarResponse{
@@ -177,14 +162,7 @@ func (s serverApi) ChangeUserRole(ctx context.Context, req *userv1.ChangeUserRol
 
 	err = s.management.ChangeUserRole(ctx, dtos.ChangeRoleToDTO(req))
 	if err != nil {
-		switch {
-		case errors.Is(err, management.ErrUserNotExist):
-			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
-		case errors.Is(err, management.ErrUserNonAuthorized):
-			return nil, status.Error(codes.PermissionDenied, ErrUserNonAuthorized.Error())
-		default:
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+		return nil, handleError(err)
 	}
 
 	return &empty.Empty{}, nil
@@ -200,7 +178,7 @@ func (s serverApi) LockAccount(ctx context.Context, req *userv1.LockAccountReque
 	panic("implement me")
 }
 
-func (s serverApi) ChangePassword(ctx context.Context, req *userv1.ChangeUserPasswordRequest) (*empty.Empty, error) {
+func (s serverApi) ChangeUserPassword(ctx context.Context, req *userv1.ChangeUserPasswordRequest) (*empty.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }

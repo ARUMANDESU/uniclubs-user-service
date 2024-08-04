@@ -8,7 +8,6 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/activate"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/jwt"
@@ -44,14 +43,6 @@ type TokenStorage interface {
 	Delete(ctx context.Context, sessionToken string) error
 }
 
-var (
-	ErrInvalidCredentials       = errors.New("invalid credentials")
-	ErrUserExists               = errors.New("user already exists")
-	ErrUserNotExist             = errors.New("user does not exist")
-	ErrRefreshTokenNotExists    = errors.New("refresh token not found")
-	ErrActivationTokenNotExists = errors.New("activation token does not exists")
-)
-
 func New(
 	log *slog.Logger,
 	JwtCfg config.JWTConfig,
@@ -77,8 +68,8 @@ func (a Auth) Login(ctx context.Context, email string, password string) (dtos.Us
 	user, err := a.usrStorage.GetUserByEmail(ctx, email)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
-			return dtos.UserCredentialsDTO{}, ErrUserNotExist
+		case errors.Is(err, domain.ErrUserNotFound):
+			return dtos.UserCredentialsDTO{}, domain.ErrUserNotFound
 		default:
 			log.Error("failed to get user", logger.Err(err))
 			return dtos.UserCredentialsDTO{}, err
@@ -87,7 +78,7 @@ func (a Auth) Login(ctx context.Context, email string, password string) (dtos.Us
 
 	// compare password and hash from db
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
-		return dtos.UserCredentialsDTO{}, ErrInvalidCredentials
+		return dtos.UserCredentialsDTO{}, domain.ErrInvalidCredentials
 	}
 
 	// Generate a pair of Access and Refresh tokens
@@ -126,8 +117,8 @@ func (a Auth) Register(ctx context.Context, dto *dtos.UserRegisterDTO) (userID i
 	err = a.usrStorage.SaveUser(ctx, user)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserExists):
-			return 0, ErrUserExists
+		case errors.Is(err, domain.ErrUserExists):
+			return 0, domain.ErrUserExists
 		default:
 			log.Error("failed to save user", logger.Err(err))
 			return 0, err
@@ -185,8 +176,8 @@ func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.
 	userID, err := a.sessionStorage.Get(ctx, rtToken)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrTokenNotExists):
-			return dtos.UserCredentialsDTO{}, ErrRefreshTokenNotExists
+		case errors.Is(err, domain.ErrTokenNotFound):
+			return dtos.UserCredentialsDTO{}, domain.ErrRefreshTokenNotFound
 		default:
 			log.Error("failed to get session", logger.Err(err))
 			return dtos.UserCredentialsDTO{}, err
@@ -201,8 +192,8 @@ func (a Auth) RefreshToken(ctx context.Context, rtToken, jwtToken string) (dtos.
 	user, err := a.usrStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
-			return dtos.UserCredentialsDTO{}, ErrUserNotExist
+		case errors.Is(err, domain.ErrUserNotFound):
+			return dtos.UserCredentialsDTO{}, domain.ErrUserNotFound
 		default:
 			log.Error("failed to get user", logger.Err(err))
 			return dtos.UserCredentialsDTO{}, err
@@ -237,9 +228,9 @@ func (a Auth) CheckUserRole(ctx context.Context, userId int64, roles []userv1.Ro
 	role, err := a.usrStorage.GetUserRoleByID(ctx, userId)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
+		case errors.Is(err, domain.ErrUserNotFound):
 			log.Error("user does not exists", logger.Err(err))
-			return false, ErrUserNotExist
+			return false, domain.ErrUserNotFound
 		default:
 			log.Error("failed to get role", logger.Err(err))
 			return false, err
@@ -263,8 +254,8 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 	if err != nil {
 		log.Error("failed to get activation token", logger.Err(err))
 		switch {
-		case errors.Is(err, storage.ErrTokenNotExists):
-			return ErrActivationTokenNotExists
+		case errors.Is(err, domain.ErrTokenNotFound):
+			return domain.ErrActivationTokenNotFound
 		default:
 			return err
 		}
@@ -273,9 +264,9 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 	err = a.usrStorage.ActivateUser(ctx, userID)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
+		case errors.Is(err, domain.ErrUserNotFound):
 			log.Error("user does not exists", logger.Err(err))
-			return ErrUserNotExist
+			return domain.ErrUserNotFound
 		default:
 			log.Error("failed to activate user", logger.Err(err))
 			return err
@@ -285,9 +276,9 @@ func (a Auth) ActivateUser(ctx context.Context, token string) error {
 	user, err := a.usrStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
+		case errors.Is(err, domain.ErrUserNotFound):
 			log.Error("user does not exists", logger.Err(err))
-			return ErrUserNotExist
+			return domain.ErrUserNotFound
 		default:
 			log.Error("failed to get user", logger.Err(err))
 			return err

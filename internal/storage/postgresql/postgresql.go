@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -60,7 +59,7 @@ func (s *Storage) SaveUser(ctx context.Context, user *domain.User) error {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" {
-				return fmt.Errorf("%s: %w", op, storage.ErrUserExists)
+				return fmt.Errorf("%s: %w", op, domain.ErrUserExists)
 			}
 		}
 		return fmt.Errorf("%s: %w", op, err)
@@ -89,7 +88,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID int64) (*domain.User, 
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+			return nil, fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -117,7 +116,7 @@ func (s *Storage) GetUserByEmail(ctx context.Context, email string) (*domain.Use
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+			return nil, fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -139,7 +138,7 @@ func (s *Storage) GetUserRoleByID(ctx context.Context, userID int64) (string, er
 	err := s.DB.QueryRowContext(ctx, query, userID).Scan(&role)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+			return "", fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
 		}
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -173,7 +172,7 @@ func (s *Storage) UpdateUser(ctx context.Context, user *domain.User) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+		return fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
 	}
 
 	return nil
@@ -192,7 +191,7 @@ func (s *Storage) DeleteUserByID(ctx context.Context, userID int64) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+		return fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
 	}
 
 	return nil
@@ -211,7 +210,7 @@ func (s *Storage) ActivateUser(ctx context.Context, userID int64) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+		return fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
 	}
 
 	return nil
@@ -293,7 +292,7 @@ func (s *Storage) UpdateUserRole(ctx context.Context, userID int64, role string)
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("%s: %w", op, storage.ErrUserNotExists)
+		return fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
 	}
 
 	return nil

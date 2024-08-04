@@ -2,11 +2,8 @@ package user
 
 import (
 	"context"
-	"errors"
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/services/auth"
-	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/jwt"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -48,10 +45,7 @@ func (s serverApi) Register(ctx context.Context, req *userv1.RegisterRequest) (*
 
 	userID, err := s.auth.Register(ctx, dtos.RegisterRequestToDTO(req))
 	if err != nil {
-		if errors.Is(err, auth.ErrUserExists) {
-			return nil, status.Error(codes.AlreadyExists, ErrUserAlreadyExists.Error())
-		}
-		return nil, status.Error(codes.Internal, ErrInternal.Error())
+		return nil, handleError(err)
 	}
 
 	return &userv1.RegisterResponse{UserId: userID}, nil
@@ -68,15 +62,7 @@ func (s serverApi) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1
 
 	dto, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		switch {
-		case errors.Is(err, auth.ErrUserNotExist):
-			return nil, status.Error(codes.NotFound, "invalid email or password")
-		case errors.Is(err, auth.ErrInvalidCredentials):
-			return nil, status.Error(codes.InvalidArgument, "invalid email or password")
-		default:
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
+		return nil, handleError(err)
 	}
 
 	return &userv1.LoginResponse{User: dto.User.ToUserObject(), JwtToken: dto.JWTToken, RtToken: dto.RtToken}, nil
@@ -90,7 +76,7 @@ func (s serverApi) Logout(ctx context.Context, req *userv1.LogoutRequest) (*empt
 
 	err = s.auth.Logout(ctx, req.GetRtToken())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, handleError(err)
 	}
 
 	return &empty.Empty{}, nil
@@ -107,10 +93,7 @@ func (s serverApi) CheckUserRole(ctx context.Context, req *userv1.CheckUserRoleR
 
 	hasRole, err := s.auth.CheckUserRole(ctx, req.GetUserId(), req.GetRoles())
 	if err != nil {
-		if errors.Is(err, auth.ErrUserNotExist) {
-			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
-		}
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, handleError(err)
 	}
 
 	return &userv1.CheckUserRoleResponse{HasRole: hasRole}, nil
@@ -125,15 +108,7 @@ func (s serverApi) ActivateUser(ctx context.Context, req *userv1.ActivateUserReq
 
 	err = s.auth.ActivateUser(ctx, req.GetVerificationToken())
 	if err != nil {
-		switch {
-		case errors.Is(err, auth.ErrActivationTokenNotExists):
-			return nil, status.Error(codes.NotFound, ErrActivationTokenNotFound.Error())
-		case errors.Is(err, auth.ErrUserNotExist):
-			return nil, status.Error(codes.NotFound, ErrUserNotFound.Error())
-		default:
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-
+		return nil, handleError(err)
 	}
 
 	return &empty.Empty{}, nil
@@ -151,21 +126,7 @@ func (s serverApi) RefreshToken(ctx context.Context, req *userv1.RefreshTokenReq
 
 	dto, err := s.auth.RefreshToken(ctx, req.GetRtToken(), req.GetJwtToken())
 	if err != nil {
-		switch {
-		case errors.Is(err, auth.ErrUserNotExist):
-			return nil, status.Error(codes.NotFound, "user not found")
-		case errors.Is(err, jwt.ErrUserIDMismatch),
-			errors.Is(err, jwt.ErrTokenIsNotValid),
-			errors.Is(err, jwt.ErrInvalidTokenClaims),
-			errors.Is(err, jwt.ErrUserIDClaimNotFound),
-			errors.Is(err, jwt.ErrTokenSignatureIsInvalid):
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		case errors.Is(err, auth.ErrRefreshTokenNotExists):
-			return nil, status.Error(codes.NotFound, err.Error())
-		case errors.Is(err, auth.ErrUserNotExist):
-		default:
-			return nil, status.Error(codes.Internal, err.Error())
-		}
+		return nil, handleError(err)
 	}
 
 	return &userv1.RefreshTokenResponse{

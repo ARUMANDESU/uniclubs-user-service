@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/redis/go-redis/v9"
 	"strconv"
 	"time"
@@ -61,7 +61,7 @@ func (s Storage) Get(ctx context.Context, sessionToken string) (int64, error) {
 	val, err := s.client.Get(ctx, sessionToken).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return 0, fmt.Errorf("%s: %w", op, storage.ErrTokenNotExists)
+			return 0, fmt.Errorf("%s: %w", op, domain.ErrTokenNotFound)
 		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}

@@ -6,7 +6,6 @@ import (
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/jwt"
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +64,7 @@ func TestAuth_Login_InvalidCredentials(t *testing.T) {
 
 	// Assert that an error was returned
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, ErrInvalidCredentials)
+	assert.ErrorIs(t, err, domain.ErrInvalidCredentials)
 
 	// Assert that the GetUserByEmail function was called with the correct parameters
 	suite.MockUserStorage.AssertCalled(t, "GetUserByEmail", mock.Anything, user.Email)
@@ -110,12 +109,12 @@ func TestAuth_CheckUserRole_UserDoesNotExist(t *testing.T) {
 	userID := int64(1)
 	roles := []userv1.Role{userv1.Role_ADMIN}
 
-	suite.MockUserStorage.On("GetUserRoleByID", mock.Anything, userID).Return("", storage.ErrUserNotExists)
+	suite.MockUserStorage.On("GetUserRoleByID", mock.Anything, userID).Return("", domain.ErrUserNotFound)
 
 	_, err := suite.Auth.CheckUserRole(context.Background(), userID, roles)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, ErrUserNotExist)
+	assert.ErrorIs(t, err, domain.ErrUserNotFound)
 
 	suite.MockUserStorage.AssertCalled(t, "GetUserRoleByID", mock.Anything, userID)
 }
@@ -177,11 +176,11 @@ func TestAuth_Register_ErrorUserExists(t *testing.T) {
 
 	user.PasswordHash = passwordHash
 
-	suite.MockUserStorage.On("SaveUser", mock.Anything, mock.AnythingOfType("*domain.User")).Return(storage.ErrUserExists)
+	suite.MockUserStorage.On("SaveUser", mock.Anything, mock.AnythingOfType("*domain.User")).Return(domain.ErrUserExists)
 
 	_, err = suite.Auth.Register(context.Background(), dto)
 
-	assert.ErrorIs(t, err, ErrUserExists)
+	assert.ErrorIs(t, err, domain.ErrUserExists)
 
 	suite.MockUserStorage.AssertCalled(t, "SaveUser", mock.Anything, mock.AnythingOfType("*domain.User"))
 }
@@ -287,11 +286,11 @@ func TestAuth_RefreshToken_ErrorGettingUser(t *testing.T) {
 	require.NoError(t, err)
 
 	suite.MockTokenStorage.On("Get", mock.Anything, tokenPair["rt_token"]).Return(user.ID, nil)
-	suite.MockUserStorage.On("GetUserByID", mock.Anything, user.ID).Return(&domain.User{}, storage.ErrUserNotExists)
+	suite.MockUserStorage.On("GetUserByID", mock.Anything, user.ID).Return(&domain.User{}, domain.ErrUserNotFound)
 
 	_, err = suite.Auth.RefreshToken(context.Background(), tokenPair["rt_token"], tokenPair["access_token"])
 
-	assert.ErrorIs(t, err, ErrUserNotExist)
+	assert.ErrorIs(t, err, domain.ErrUserNotFound)
 
 	suite.MockUserStorage.AssertCalled(t, "GetUserByID", mock.Anything, user.ID)
 	suite.MockTokenStorage.AssertCalled(t, "Get", mock.Anything, tokenPair["rt_token"])
@@ -303,11 +302,11 @@ func TestAuth_RefreshToken_ErrTokenNotFound(t *testing.T) {
 	tokenPair, err := jwt.GenerateTokenPair(1, suite.Auth.JwtCfg)
 	require.NoError(t, err)
 
-	suite.MockTokenStorage.On("Get", mock.Anything, tokenPair["rt_token"]).Return(int64(0), storage.ErrTokenNotExists)
+	suite.MockTokenStorage.On("Get", mock.Anything, tokenPair["rt_token"]).Return(int64(0), domain.ErrTokenNotFound)
 
 	_, err = suite.Auth.RefreshToken(context.Background(), tokenPair["rt_token"], tokenPair["access_token"])
 
-	assert.ErrorIs(t, err, ErrRefreshTokenNotExists)
+	assert.ErrorIs(t, err, domain.ErrRefreshTokenNotFound)
 
 	suite.MockTokenStorage.AssertCalled(t, "Get", mock.Anything, tokenPair["rt_token"])
 }

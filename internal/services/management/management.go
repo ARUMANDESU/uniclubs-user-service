@@ -10,13 +10,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
-	"github.com/ARUMANDESU/uniclubs-user-service/internal/storage"
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
-)
-
-var (
-	ErrUserNotExist      = errors.New("user does not exist")
-	ErrUserNonAuthorized = errors.New("user is not authorized")
 )
 
 type Management struct {
@@ -55,8 +49,8 @@ func (m Management) GetUser(ctx context.Context, userID int64) (*domain.User, er
 	user, err := m.usrStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
-			return nil, ErrUserNotExist
+		case errors.Is(err, domain.ErrUserNotFound):
+			return nil, domain.ErrUserNotFound
 		default:
 			log.Error("failed to get user", logger.Err(err))
 			return nil, err
@@ -75,8 +69,8 @@ func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
 	err := m.usrStorage.UpdateUser(ctx, user)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
-			return ErrUserNotExist
+		case errors.Is(err, domain.ErrUserNotFound):
+			return domain.ErrUserNotFound
 		default:
 			log.Error("failed to update user", logger.Err(err))
 			return err
@@ -99,8 +93,8 @@ func (m Management) DeleteUser(ctx context.Context, userID int64) error {
 	err := m.usrStorage.DeleteUserByID(ctx, userID)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
-			return ErrUserNotExist
+		case errors.Is(err, domain.ErrUserNotFound):
+			return domain.ErrUserNotFound
 		default:
 			log.Error("failed to delete user", logger.Err(err))
 			return err
@@ -137,8 +131,8 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl str
 	user, err = m.usrStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
-			return nil, "", ErrUserNotExist
+		case errors.Is(err, domain.ErrUserNotFound):
+			return nil, "", domain.ErrUserNotFound
 		default:
 			log.Error("failed to get user", logger.Err(err))
 			return nil, "", err
@@ -154,9 +148,9 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl str
 	err = m.usrStorage.UpdateUser(ctx, user)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
+		case errors.Is(err, domain.ErrUserNotFound):
 			log.Warn("user not found while updating avatar", logger.Err(err))
-			return nil, "", ErrUserNotExist
+			return nil, "", domain.ErrUserNotFound
 		default:
 			log.Error("failed to update user avatar url", logger.Err(err))
 			return nil, "", err
@@ -181,8 +175,8 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 	user, err := m.usrStorage.GetUserByID(ctx, dto.UserID)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
-			return ErrUserNotExist
+		case errors.Is(err, domain.ErrUserNotFound):
+			return domain.ErrUserNotFound
 		default:
 			log.Error("failed to get user", logger.Err(err))
 			return err
@@ -190,14 +184,14 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 	}
 
 	if user.Role != "DSVR" && user.Role != "ADMIN" {
-		return ErrUserNonAuthorized
+		return domain.ErrUserNonAuthorized
 	}
 
 	target, err := m.usrStorage.GetUserByID(ctx, dto.TargetID)
 	if err != nil {
 		switch {
-		case errors.Is(err, storage.ErrUserNotExists):
-			return ErrUserNotExist
+		case errors.Is(err, domain.ErrUserNotFound):
+			return domain.ErrUserNotFound
 		default:
 			log.Error("failed to get user", logger.Err(err))
 			return err
@@ -209,7 +203,7 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 	rolePosition := domain.RoleMap[dto.Role]
 
 	if userRolePosition <= targetRolePosition || userRolePosition <= rolePosition {
-		return ErrUserNonAuthorized
+		return domain.ErrUserNonAuthorized
 	}
 
 	err = m.usrStorage.UpdateUserRole(ctx, target.ID, dto.Role)
@@ -245,18 +239,14 @@ func (m Management) DeleteNonActivatedUsers(ctx context.Context, days int) error
 
 	err := m.usrStorage.DeleteNonActivatedUsers(ctx, days)
 	if err != nil {
-		return handleError(err, log, "failed to delete inactived users")
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			return domain.ErrUserNotFound
+		default:
+			log.Error("failed to delete non activated users", logger.Err(err))
+			return domain.ErrInternal
+		}
 	}
 
 	return nil
-}
-
-func handleError(err error, log *slog.Logger, op string) error {
-	switch {
-	case errors.Is(err, storage.ErrUserNotExists):
-		return ErrUserNotExist
-	default:
-		log.Error(op, logger.Err(err))
-		return err
-	}
 }
