@@ -64,33 +64,47 @@ func TestManagement_GetUser_NotFound(t *testing.T) {
 }
 
 func TestManagement_UpdateUser_UserExists(t *testing.T) {
-	suite := Setup(t)
+	s := Setup(t)
 
+	dto := dtos.UpdateUserDTO{
+		UserID:    1,
+		FirstName: "John",
+		LastName:  "Doe",
+		Paths:     []string{"first_name"},
+	}
 	user := &domain.User{ID: 1}
-	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(user, nil)
-	suite.UserStorage.On("UpdateUser", mock.Anything, user).Return(nil)
-	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	s.UserStorage.On("GetUserByID", mock.Anything, dto.UserID).Return(user, nil)
+	s.UserStorage.On("UpdateUser", mock.Anything, mock.Anything).Return(nil)
+	s.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	err := suite.Management.UpdateUser(context.Background(), user)
-
+	updatedUser, err := s.Management.UpdateUser(context.Background(), dto)
 	require.NoError(t, err)
-	suite.UserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
+
+	assert.Equal(t, user.FirstName, updatedUser.FirstName)
+
+	s.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, dto.UserID)
+	s.UserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
 }
 
 func TestManagement_UpdateUser_UserDoesNotExist(t *testing.T) {
 	suite := Setup(t)
 
+	dto := dtos.UpdateUserDTO{
+		UserID:    1,
+		FirstName: "John",
+		LastName:  "Doe",
+		Paths:     []string{"first_name"},
+	}
 	user := &domain.User{ID: 1}
-	suite.UserStorage.On("GetUserByID", mock.Anything, user.ID).Return(nil, domain.ErrUserNotFound)
-	suite.UserStorage.On("UpdateUser", mock.Anything, user).Return(domain.ErrUserNotFound)
-	suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.UserStorage.On("GetUserByID", mock.Anything, dto.UserID).Return(nil, domain.ErrUserNotFound)
 
-	err := suite.Management.UpdateUser(context.Background(), user)
+	_, err := suite.Management.UpdateUser(context.Background(), dto)
 
 	assert.ErrorIs(t, err, domain.ErrUserNotFound)
 
+	suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, dto.UserID)
 	suite.Amqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	suite.UserStorage.AssertCalled(t, "UpdateUser", mock.Anything, user)
+	suite.UserStorage.AssertNotCalled(t, "UpdateUser", mock.Anything, user)
 }
 
 func TestManagement_DeleteUser_UserExists(t *testing.T) {

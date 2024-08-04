@@ -2,8 +2,6 @@ package user
 
 import (
 	"context"
-	"errors"
-
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
@@ -21,7 +19,7 @@ type Management interface {
 		query string,
 		filters domain.Filters,
 	) (users []*domain.User, metadata domain.Metadata, err error)
-	UpdateUser(ctx context.Context, user *domain.User) error
+	UpdateUser(ctx context.Context, dto dtos.UpdateUserDTO) (domain.User, error)
 	DeleteUser(ctx context.Context, userID int64) error
 	UpdateAvatar(ctx context.Context, userID int64, imageUrl string) (*domain.User, string, error)
 	ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error
@@ -30,37 +28,27 @@ type Management interface {
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UserObject, error) {
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.UserId, validation.Required),
-		validation.Field(&req.Year, validation.Min(1)),
+		validation.Field(&req.FirstName, validation.By(validateName)),
+		validation.Field(&req.LastName, validation.By(validateName)),
+		validation.Field(&req.Major, validation.By(validateMajor)),
+		validation.Field(&req.GroupName, validation.By(validateGroupName)),
+		validation.Field(&req.Year, validation.By(validateYear)),
 	)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	user, err := s.management.GetUser(ctx, req.GetUserId())
-	if err != nil {
-		if errors.Is(err, domain.ErrUserNotFound) {
-			return nil, status.Error(codes.NotFound, domain.ErrUserNotFound.Error())
-		}
-		return nil, status.Error(codes.Internal, err.Error())
+	dto := dtos.UpdateUserDTO{
+		UserID:    req.GetUserId(),
+		FirstName: req.GetFirstName(),
+		LastName:  req.GetLastName(),
+		Major:     req.GetMajor(),
+		GroupName: req.GetGroupName(),
+		Year:      req.GetYear(),
+		Paths:     req.GetUpdateMask().GetPaths(),
 	}
 
-	paths := req.GetUpdateMask().GetPaths()
-	for _, path := range paths {
-		switch path {
-		case "first_name":
-			user.FirstName = req.GetFirstName()
-		case "last_name":
-			user.LastName = req.GetLastName()
-		case "major":
-			user.Major = req.GetMajor()
-		case "group_name":
-			user.GroupName = req.GetGroupName()
-		case "year":
-			user.Year = req.GetYear()
-		}
-	}
-
-	err = s.management.UpdateUser(ctx, user)
+	user, err := s.management.UpdateUser(ctx, dto)
 	if err != nil {
 		return nil, handleError(err)
 	}

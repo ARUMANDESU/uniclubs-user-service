@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	deleteNonActivatedUsersTime = time.Second * 10
+	deleteNonActivatedUsersTime = time.Hour * 12
 	deleteNonActivatedUsersDays = 1
 )
 
@@ -35,7 +35,7 @@ func New(log *slog.Logger, userStorage UserStorage) (*App, error) {
 
 func (a *App) Start() {
 	a.log.Info("starting cron jobs")
-	a.scheduler.NewJob(
+	job, err := a.scheduler.NewJob(
 		gocron.DurationJob(deleteNonActivatedUsersTime),
 		gocron.NewTask(func() {
 			ctx := context.Background()
@@ -48,5 +48,12 @@ func (a *App) Start() {
 			a.log.Debug("non activated users deleted")
 		}),
 	)
-	a.scheduler.Start() // start is non-blocking so we don't need to start it in a goroutine
+	if err != nil {
+		a.log.Error("failed to create cron job", logger.Err(err))
+	}
+
+	a.scheduler.Start() // start is non-blocking, so we don't need to start it in a goroutine
+	a.log.Info("cron jobs started")
+
+	job.RunNow()
 }

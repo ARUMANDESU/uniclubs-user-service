@@ -62,28 +62,54 @@ func (m Management) GetUser(ctx context.Context, userID int64) (*domain.User, er
 
 }
 
-func (m Management) UpdateUser(ctx context.Context, user *domain.User) error {
+func (m Management) UpdateUser(ctx context.Context, dto dtos.UpdateUserDTO) (domain.User, error) {
 	const op = "service.management.updateUser"
 	log := m.log.With(slog.String("op", op))
 
-	err := m.usrStorage.UpdateUser(ctx, user)
+	user, err := m.usrStorage.GetUserByID(ctx, dto.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
-			return domain.ErrUserNotFound
+			return domain.User{}, err
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return domain.User{}, domain.ErrInternal
+		}
+	}
+
+	for _, path := range dto.Paths {
+		switch path {
+		case "first_name":
+			user.FirstName = dto.FirstName
+		case "last_name":
+			user.LastName = dto.LastName
+		case "major":
+			user.Major = dto.Major
+		case "group_name":
+			user.GroupName = dto.GroupName
+		case "year":
+			user.Year = dto.Year
+		}
+	}
+
+	err = m.usrStorage.UpdateUser(ctx, user)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			return domain.User{}, err
 		default:
 			log.Error("failed to update user", logger.Err(err))
-			return err
+			return domain.User{}, domain.ErrInternal
 		}
 	}
 
 	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, user)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
-		return err
+		return domain.User{}, err
 	}
 
-	return nil
+	return *user, nil
 }
 
 func (m Management) DeleteUser(ctx context.Context, userID int64) error {

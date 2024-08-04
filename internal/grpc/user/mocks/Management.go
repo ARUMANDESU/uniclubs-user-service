@@ -156,22 +156,32 @@ func (_m *Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl s
 	return r0, r1, r2
 }
 
-// UpdateUser provides a mock function with given fields: ctx, _a1
-func (_m *Management) UpdateUser(ctx context.Context, _a1 *domain.User) error {
-	ret := _m.Called(ctx, _a1)
+// UpdateUser provides a mock function with given fields: ctx, dto
+func (_m *Management) UpdateUser(ctx context.Context, dto dtos.UpdateUserDTO) (domain.User, error) {
+	ret := _m.Called(ctx, dto)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateUser")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *domain.User) error); ok {
-		r0 = rf(ctx, _a1)
+	var r0 domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.UpdateUserDTO) (domain.User, error)); ok {
+		return rf(ctx, dto)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.UpdateUserDTO) domain.User); ok {
+		r0 = rf(ctx, dto)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(domain.User)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, dtos.UpdateUserDTO) error); ok {
+		r1 = rf(ctx, dto)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // NewManagement creates a new instance of Management. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

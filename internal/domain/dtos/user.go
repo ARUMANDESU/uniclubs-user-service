@@ -28,6 +28,16 @@ type UserCredentialsDTO struct {
 	RtToken  string
 }
 
+type UpdateUserDTO struct {
+	UserID    int64
+	FirstName string
+	LastName  string
+	Major     string
+	GroupName string
+	Year      int32
+	Paths     []string
+}
+
 func ChangeRoleToDTO(req *userv1.ChangeUserRoleRequest) *ChangeRoleDTO {
 	return &ChangeRoleDTO{
 		UserID:   req.UserId,
