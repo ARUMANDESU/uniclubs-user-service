@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
@@ -195,6 +196,21 @@ func (s serverApi) UnlockAccount(ctx context.Context, req *userv1.UnlockAccountR
 }
 
 func (s serverApi) LockAccount(ctx context.Context, req *userv1.LockAccountRequest) (*empty.Empty, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s serverApi) ChangePassword(ctx context.Context, req *userv1.ChangeUserPasswordRequest) (*empty.Empty, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s serverApi) ForgotPassword(ctx context.Context, req *userv1.ForgotPasswordRequest) (*empty.Empty, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s serverApi) ResetPassword(ctx context.Context, req *userv1.ResetPasswordRequest) (*empty.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }
