@@ -26,6 +26,7 @@ type Management interface {
 	ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error
 	ChangePassword(ctx context.Context, dto dtos.ChangeUserPasswordDTO) error
 	ForgotPassword(ctx context.Context, email, barcode string) error
+	ResetPassword(ctx context.Context, token, newPassword string) error
 }
 
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UserObject, error) {
@@ -215,6 +216,18 @@ func (s serverApi) ForgotPassword(ctx context.Context, req *userv1.ForgotPasswor
 }
 
 func (s serverApi) ResetPassword(ctx context.Context, req *userv1.ResetPasswordRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.VerificationToken, validation.Required),
+		validation.Field(&req.NewPassword, validation.Required, validation.By(validatePassword)),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = s.management.ResetPassword(ctx, req.GetVerificationToken(), req.GetNewPassword())
+	if err != nil {
+		return nil, handleError(err)
+	}
+
+	return &empty.Empty{}, nil
 }

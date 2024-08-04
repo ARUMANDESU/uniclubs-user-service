@@ -14,6 +14,7 @@ func handleError(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrUserNotFound),
 		errors.Is(err, domain.ErrNotFound),
+		errors.Is(err, domain.ErrTokenNotFound),
 		errors.Is(err, domain.ErrActivationTokenNotFound),
 		errors.Is(err, domain.ErrRefreshTokenNotFound):
 		return status.Error(codes.NotFound, err.Error())

@@ -401,6 +401,37 @@ func (m Management) ForgotPassword(ctx context.Context, email, barcode string) e
 	return nil
 }
 
+func (m Management) ResetPassword(ctx context.Context, token, newPassword string) error {
+	const op = "service.management.resetPassword"
+	log := m.log.With(slog.String("op", op))
+
+	userID, err := m.tokenStorage.Get(ctx, token)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrTokenNotFound):
+			return domain.ErrTokenNotFound
+		default:
+			log.Error("failed to get token", logger.Err(err))
+			return err
+		}
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.Error("failed to generate password hash", logger.Err(err))
+		return domain.ErrInternal
+	}
+
+	err = m.userStorage.UpdatePassword(ctx, userID, passwordHash)
+	if err != nil {
+		log.Error("failed to update user password", logger.Err(err))
+		return domain.ErrInternal
+	}
+
+	return nil
+
+}
+
 func (m Management) checkRateLimit(ctx context.Context, email string) error {
 	lastRequestTime, err := m.rateLimitStorage.GetLastRequestTime(ctx, email)
 	if err != nil {
