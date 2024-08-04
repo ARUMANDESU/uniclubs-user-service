@@ -20,9 +20,10 @@ type Management interface {
 		filters domain.Filters,
 	) (users []*domain.User, metadata domain.Metadata, err error)
 	UpdateUser(ctx context.Context, dto dtos.UpdateUserDTO) (domain.User, error)
-	DeleteUser(ctx context.Context, userID int64) error
 	UpdateAvatar(ctx context.Context, userID int64, imageUrl string) (*domain.User, string, error)
+	DeleteUser(ctx context.Context, userID int64) error
 	ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error
+	ChangePassword(ctx context.Context, dto dtos.ChangeUserPasswordDTO) error
 }
 
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UserObject, error) {
@@ -167,8 +168,31 @@ func (s serverApi) LockAccount(ctx context.Context, req *userv1.LockAccountReque
 }
 
 func (s serverApi) ChangeUserPassword(ctx context.Context, req *userv1.ChangeUserPasswordRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.UserId, validation.Required, validation.Min(1)),
+		validation.Field(&req.OldPassword, validation.Required),
+		validation.Field(&req.NewPassword,
+			validation.Required,
+			validation.NotIn(req.OldPassword).Error("new password must be different from the old one"),
+			validation.By(validatePassword),
+		),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	dto := dtos.ChangeUserPasswordDTO{
+		UserID:  req.GetUserId(),
+		OldPass: req.GetOldPassword(),
+		NewPass: req.GetNewPassword(),
+	}
+
+	err = s.management.ChangePassword(ctx, dto)
+	if err != nil {
+		return nil, handleError(err)
+	}
+
+	return &empty.Empty{}, nil
 }
 
 func (s serverApi) ForgotPassword(ctx context.Context, req *userv1.ForgotPasswordRequest) (*empty.Empty, error) {

@@ -3,6 +3,7 @@ package management
 import (
 	"context"
 	"errors"
+	"golang.org/x/crypto/bcrypt"
 	"io"
 	"log/slog"
 	"testing"
@@ -331,7 +332,7 @@ func TestManagement_ChangeUserRole_HappyPath(t *testing.T) {
 			}
 			suite.UserStorage.On("GetUserByID", mock.Anything, tt.user.ID).Return(tt.user, nil)
 			suite.UserStorage.On("GetUserByID", mock.Anything, tt.target.ID).Return(tt.target, nil)
-			suite.UserStorage.On("UpdateUserRole", mock.Anything, tt.target.ID, tt.role).Return(nil)
+			suite.UserStorage.On("UpdateRole", mock.Anything, tt.target.ID, tt.role).Return(nil)
 			suite.Amqp.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 			err := suite.Management.ChangeUserRole(context.Background(), dto)
@@ -340,7 +341,7 @@ func TestManagement_ChangeUserRole_HappyPath(t *testing.T) {
 
 			suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.user.ID)
 			suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, tt.target.ID)
-			suite.UserStorage.AssertCalled(t, "UpdateUserRole", mock.Anything, tt.target.ID, tt.role)
+			suite.UserStorage.AssertCalled(t, "UpdateRole", mock.Anything, tt.target.ID, tt.role)
 			suite.Amqp.AssertCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
@@ -457,8 +458,72 @@ func TestManagement_ChangeUserRole_FailPath(t *testing.T) {
 			require.ErrorIs(t, err, tt.expectedErr)
 
 			suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, mock.AnythingOfType("int64"))
-			suite.UserStorage.AssertNotCalled(t, "UpdateUserRole", mock.Anything, tt.target.ID, tt.role)
+			suite.UserStorage.AssertNotCalled(t, "UpdateRole", mock.Anything, tt.target.ID, tt.role)
 			suite.Amqp.AssertNotCalled(t, "Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		})
 	}
+}
+
+func TestManagement_ChangePassword_Success(t *testing.T) {
+	suite := Setup(t)
+
+	dto := dtos.ChangeUserPasswordDTO{
+		UserID:  1,
+		OldPass: "oldPassword",
+		NewPass: "newPassword",
+	}
+
+	hashedOldPassword, _ := bcrypt.GenerateFromPassword([]byte(dto.OldPass), bcrypt.DefaultCost)
+	user := &domain.User{ID: dto.UserID, PasswordHash: hashedOldPassword}
+
+	suite.UserStorage.On("GetUserByID", mock.Anything, dto.UserID).Return(user, nil)
+	suite.UserStorage.On("UpdatePassword", mock.Anything, dto.UserID, mock.Anything).Return(nil)
+
+	err := suite.Management.ChangePassword(context.Background(), dto)
+
+	require.NoError(t, err)
+
+	suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, dto.UserID)
+	suite.UserStorage.AssertCalled(t, "UpdatePassword", mock.Anything, dto.UserID, mock.Anything)
+}
+
+func TestManagement_ChangePassword_UserNotFound(t *testing.T) {
+	suite := Setup(t)
+
+	dto := dtos.ChangeUserPasswordDTO{
+		UserID:  1,
+		OldPass: "oldPassword",
+		NewPass: "newPassword",
+	}
+
+	suite.UserStorage.On("GetUserByID", mock.Anything, dto.UserID).Return(nil, domain.ErrUserNotFound)
+
+	err := suite.Management.ChangePassword(context.Background(), dto)
+
+	require.ErrorIs(t, err, domain.ErrUserNotFound)
+
+	suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, dto.UserID)
+	suite.UserStorage.AssertNotCalled(t, "UpdatePassword", mock.Anything, dto.UserID, mock.Anything)
+}
+
+func TestManagement_ChangePassword_WrongOldPassword(t *testing.T) {
+	suite := Setup(t)
+
+	dto := dtos.ChangeUserPasswordDTO{
+		UserID:  1,
+		OldPass: "wrongOldPassword",
+		NewPass: "newPassword",
+	}
+
+	hashedOldPassword, _ := bcrypt.GenerateFromPassword([]byte("oldPassword"), bcrypt.DefaultCost)
+	user := &domain.User{ID: dto.UserID, PasswordHash: hashedOldPassword}
+
+	suite.UserStorage.On("GetUserByID", mock.Anything, dto.UserID).Return(user, nil)
+
+	err := suite.Management.ChangePassword(context.Background(), dto)
+
+	require.Error(t, err)
+
+	suite.UserStorage.AssertCalled(t, "GetUserByID", mock.Anything, dto.UserID)
+	suite.UserStorage.AssertNotCalled(t, "UpdatePassword", mock.Anything, dto.UserID, mock.Anything)
 }

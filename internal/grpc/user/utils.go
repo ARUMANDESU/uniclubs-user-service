@@ -82,8 +82,12 @@ func validatePassword(value any) error {
 		return errors.New("password must be a string")
 	}
 
-	return validation.Validate(password,
-		validation.Match(regexp.MustCompile("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{6,64}$")).
-			Error("password must contain at least one uppercase letter, one lowercase letter, one number, and be between 6 and 64 characters"),
+	var (
+		hasMinLen    = validation.Length(6, 64).Error("password must be between 6 and 64 characters")
+		hasUppercase = validation.Match(regexp.MustCompile(`[A-Z]`)).Error("password must contain at least one uppercase letter")
+		hasLowercase = validation.Match(regexp.MustCompile(`[a-z]`)).Error("password must contain at least one lowercase letter")
+		hasNumber    = validation.Match(regexp.MustCompile(`[0-9]`)).Error("password must contain at least one number")
 	)
+
+	return validation.Validate(password, hasMinLen, hasUppercase, hasLowercase, hasNumber)
 }

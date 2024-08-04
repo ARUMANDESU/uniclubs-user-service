@@ -272,7 +272,7 @@ func (s *Storage) GetAll(ctx context.Context, query string, filters domain.Filte
 	return users, metadata, nil
 }
 
-func (s *Storage) UpdateUserRole(ctx context.Context, userID int64, role string) error {
+func (s *Storage) UpdateRole(ctx context.Context, userID int64, role string) error {
 	const op = "storage.postgresql.updateUserRole"
 
 	query := `
@@ -314,6 +314,31 @@ func (s *Storage) DeleteNonActivatedUsers(ctx context.Context, days int) error {
 	_, err = result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (s *Storage) UpdatePassword(ctx context.Context, userID int64, passwordHash []byte) error {
+	const op = "storage.postgresql.updatePassword"
+
+	query := `
+		UPDATE users
+		SET pass_hash = $2
+		WHERE id = $1 and activated;
+	`
+
+	result, err := s.DB.ExecContext(ctx, query, userID, passwordHash)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%s: %w", op, domain.ErrUserNotFound)
 	}
 
 	return nil

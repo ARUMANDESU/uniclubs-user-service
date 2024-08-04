@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"time"
 
@@ -27,10 +28,13 @@ type Amqp interface {
 //go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=UserStorage
 type UserStorage interface {
 	GetUserByID(ctx context.Context, userID int64) (user *domain.User, err error)
-	UpdateUser(ctx context.Context, user *domain.User) error
-	UpdateUserRole(ctx context.Context, userID int64, role string) error
-	DeleteUserByID(ctx context.Context, userID int64) error
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
+
+	UpdateUser(ctx context.Context, user *domain.User) error
+	UpdateRole(ctx context.Context, userID int64, role string) error
+	UpdatePassword(ctx context.Context, userID int64, passwordHash []byte) error
+
+	DeleteUserByID(ctx context.Context, userID int64) error
 	DeleteNonActivatedUsers(ctx context.Context, days int) error
 }
 
@@ -232,7 +236,7 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 		return domain.ErrUserNonAuthorized
 	}
 
-	err = m.usrStorage.UpdateUserRole(ctx, target.ID, dto.Role)
+	err = m.usrStorage.UpdateRole(ctx, target.ID, dto.Role)
 	if err != nil {
 		log.Error("failed to update user's role", logger.Err(err))
 		return err
@@ -272,6 +276,42 @@ func (m Management) DeleteNonActivatedUsers(ctx context.Context, days int) error
 			log.Error("failed to delete non activated users", logger.Err(err))
 			return domain.ErrInternal
 		}
+	}
+
+	return nil
+}
+
+func (m Management) ChangePassword(ctx context.Context, dto dtos.ChangeUserPasswordDTO) error {
+	const op = "service.management.changePassword"
+	log := m.log.With(slog.String("op", op))
+
+	user, err := m.usrStorage.GetUserByID(ctx, dto.UserID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			return domain.ErrUserNotFound
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return err
+		}
+	}
+
+	// compare old password and hash from db
+	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(dto.OldPass)); err != nil {
+		return fmt.Errorf("%w: %s", domain.ErrInvalidCredentials, "old password is incorrect")
+	}
+
+	// generate new password hash
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(dto.NewPass), bcrypt.DefaultCost)
+	if err != nil {
+		log.Error("failed to generate password hash", logger.Err(err))
+		return domain.ErrInternal
+	}
+
+	err = m.usrStorage.UpdatePassword(ctx, user.ID, passwordHash)
+	if err != nil {
+		log.Error("failed to update user password", logger.Err(err))
+		return domain.ErrInternal
 	}
 
 	return nil

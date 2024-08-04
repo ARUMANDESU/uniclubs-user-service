@@ -118,6 +118,42 @@ func (_m *UserStorage) GetUserByID(ctx context.Context, userID int64) (*domain.U
 	return r0, r1
 }
 
+// UpdatePassword provides a mock function with given fields: ctx, userID, passwordHash
+func (_m *UserStorage) UpdatePassword(ctx context.Context, userID int64, passwordHash []byte) error {
+	ret := _m.Called(ctx, userID, passwordHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdatePassword")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, []byte) error); ok {
+		r0 = rf(ctx, userID, passwordHash)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateRole provides a mock function with given fields: ctx, userID, role
+func (_m *UserStorage) UpdateRole(ctx context.Context, userID int64, role string) error {
+	ret := _m.Called(ctx, userID, role)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateRole")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, string) error); ok {
+		r0 = rf(ctx, userID, role)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpdateUser provides a mock function with given fields: ctx, user
 func (_m *UserStorage) UpdateUser(ctx context.Context, user *domain.User) error {
 	ret := _m.Called(ctx, user)
@@ -129,24 +165,6 @@ func (_m *UserStorage) UpdateUser(ctx context.Context, user *domain.User) error 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *domain.User) error); ok {
 		r0 = rf(ctx, user)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// UpdateUserRole provides a mock function with given fields: ctx, userID, role
-func (_m *UserStorage) UpdateUserRole(ctx context.Context, userID int64, role string) error {
-	ret := _m.Called(ctx, userID, role)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateUserRole")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, string) error); ok {
-		r0 = rf(ctx, userID, role)
 	} else {
 		r0 = ret.Error(0)
 	}

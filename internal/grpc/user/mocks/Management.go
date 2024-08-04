@@ -16,6 +16,24 @@ type Management struct {
 	mock.Mock
 }
 
+// ChangePassword provides a mock function with given fields: ctx, dto
+func (_m *Management) ChangePassword(ctx context.Context, dto dtos.ChangeUserPasswordDTO) error {
+	ret := _m.Called(ctx, dto)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChangePassword")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, dtos.ChangeUserPasswordDTO) error); ok {
+		r0 = rf(ctx, dto)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // ChangeUserRole provides a mock function with given fields: ctx, dto
 func (_m *Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error {
 	ret := _m.Called(ctx, dto)

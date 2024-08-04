@@ -38,6 +38,12 @@ type UpdateUserDTO struct {
 	Paths     []string
 }
 
+type ChangeUserPasswordDTO struct {
+	UserID  int64
+	OldPass string
+	NewPass string
+}
+
 func ChangeRoleToDTO(req *userv1.ChangeUserRoleRequest) *ChangeRoleDTO {
 	return &ChangeRoleDTO{
 		UserID:   req.UserId,
