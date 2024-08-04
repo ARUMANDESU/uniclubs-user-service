@@ -6,7 +6,7 @@ import (
 	userv1 "github.com/ARUMANDESU/uniclubs-protos/gen/go/user"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
-	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/jwt"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/tokens/jwt"
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

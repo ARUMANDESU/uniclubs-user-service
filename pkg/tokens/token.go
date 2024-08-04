@@ -1,11 +1,11 @@
-package session
+package tokens
 
 import (
 	"crypto/rand"
 	"encoding/hex"
 )
 
-func GenerateToken() (string, error) {
+func Generate() (string, error) {
 	b := make([]byte, 32)
 
 	// Generate cryptographically secure random bytes

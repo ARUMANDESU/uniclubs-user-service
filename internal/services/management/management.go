@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/tokens"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"time"
@@ -14,20 +15,33 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/pkg/logger"
 )
 
+const rateLimitCooldown = time.Minute * 5
+
 type Management struct {
-	log        *slog.Logger
-	usrStorage UserStorage
-	amqp       Amqp
+	log              *slog.Logger
+	userStorage      UserStorage
+	tokenStorage     TokenStorage
+	rateLimitStorage RateLimitStorage
+	amqp             Amqp
+}
+
+type ServiceConfig struct {
+	Log              *slog.Logger
+	UserStorage      UserStorage
+	TokenStorage     TokenStorage
+	RateLimitStorage RateLimitStorage
+	Amqp             Amqp
 }
 
 //go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=Amqp
 type Amqp interface {
-	Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error
+	Publish(ctx context.Context, exchangeName rabbitmq.ExchangeName, routingKey rabbitmq.RoutingKey, msg any) error
 }
 
 //go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=UserStorage
 type UserStorage interface {
 	GetUserByID(ctx context.Context, userID int64) (user *domain.User, err error)
+	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	GetAll(ctx context.Context, query string, filters domain.Filters) ([]*domain.User, domain.Metadata, error)
 
 	UpdateUser(ctx context.Context, user *domain.User) error
@@ -38,11 +52,26 @@ type UserStorage interface {
 	DeleteNonActivatedUsers(ctx context.Context, days int) error
 }
 
-func New(log *slog.Logger, storage UserStorage, amqp Amqp) *Management {
+//go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=TokenStorage
+type TokenStorage interface {
+	Create(ctx context.Context, token string, userID int64, duration time.Duration) error
+	Get(ctx context.Context, token string) (userID int64, err error)
+	Delete(ctx context.Context, sessionToken string) error
+}
+
+//go:generate go run github.com/vektra/mockery/v2@v2.42.2 --name=RateLimitStorage
+type RateLimitStorage interface {
+	GetLastRequestTime(ctx context.Context, email string) (time.Time, error)
+	UpdateLastRequestTime(ctx context.Context, email string, t time.Time) error
+}
+
+func New(config ServiceConfig) *Management {
 	return &Management{
-		log:        log,
-		usrStorage: storage,
-		amqp:       amqp,
+		log:              config.Log,
+		userStorage:      config.UserStorage,
+		amqp:             config.Amqp,
+		tokenStorage:     config.TokenStorage,
+		rateLimitStorage: config.RateLimitStorage,
 	}
 }
 
@@ -50,7 +79,7 @@ func (m Management) GetUser(ctx context.Context, userID int64) (*domain.User, er
 	const op = "service.management.getUser"
 	log := m.log.With(slog.String("op", op))
 
-	user, err := m.usrStorage.GetUserByID(ctx, userID)
+	user, err := m.userStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -70,7 +99,7 @@ func (m Management) UpdateUser(ctx context.Context, dto dtos.UpdateUserDTO) (dom
 	const op = "service.management.updateUser"
 	log := m.log.With(slog.String("op", op))
 
-	user, err := m.usrStorage.GetUserByID(ctx, dto.UserID)
+	user, err := m.userStorage.GetUserByID(ctx, dto.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -96,7 +125,7 @@ func (m Management) UpdateUser(ctx context.Context, dto dtos.UpdateUserDTO) (dom
 		}
 	}
 
-	err = m.usrStorage.UpdateUser(ctx, user)
+	err = m.userStorage.UpdateUser(ctx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -107,7 +136,7 @@ func (m Management) UpdateUser(ctx context.Context, dto dtos.UpdateUserDTO) (dom
 		}
 	}
 
-	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, user)
+	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdated, user)
 	if err != nil {
 		log.Error("failed to publish user updated event", logger.Err(err))
 		return domain.User{}, err
@@ -120,7 +149,7 @@ func (m Management) DeleteUser(ctx context.Context, userID int64) error {
 	const op = "service.management.deleteUser"
 	log := m.log.With(slog.String("op", op))
 
-	err := m.usrStorage.DeleteUserByID(ctx, userID)
+	err := m.userStorage.DeleteUserByID(ctx, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -131,7 +160,7 @@ func (m Management) DeleteUser(ctx context.Context, userID int64) error {
 		}
 	}
 
-	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserDeletedEventRoutingKey, userID)
+	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserDeleted, userID)
 	if err != nil {
 		log.Error("failed to publish user deleted event", logger.Err(err))
 		return err
@@ -144,7 +173,7 @@ func (m Management) SearchUsers(ctx context.Context, query string, filters domai
 	const op = "service.management.searchUsers"
 	log := m.log.With(slog.String("op", op))
 
-	users, metadata, err := m.usrStorage.GetAll(ctx, query, filters)
+	users, metadata, err := m.userStorage.GetAll(ctx, query, filters)
 	if err != nil {
 		log.Error("failed to get users", logger.Err(err))
 		return nil, domain.Metadata{}, err
@@ -158,7 +187,7 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl str
 	const op = "service.management.updateAvatar"
 	log := m.log.With(slog.String("op", op))
 
-	user, err = m.usrStorage.GetUserByID(ctx, userID)
+	user, err = m.userStorage.GetUserByID(ctx, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -175,7 +204,7 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl str
 
 	user.AvatarURL = imageUrl
 
-	err = m.usrStorage.UpdateUser(ctx, user)
+	err = m.userStorage.UpdateUser(ctx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -189,7 +218,7 @@ func (m Management) UpdateAvatar(ctx context.Context, userID int64, imageUrl str
 
 	go func() {
 		user := user
-		err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdatedEventRoutingKey, user)
+		err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserUpdated, user)
 		if err != nil {
 			log.Error("failed to publish user updated event", logger.Err(err))
 		}
@@ -202,7 +231,7 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 	const op = "service.management.changeUserRole"
 	log := m.log.With(slog.String("op", op))
 
-	user, err := m.usrStorage.GetUserByID(ctx, dto.UserID)
+	user, err := m.userStorage.GetUserByID(ctx, dto.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -217,7 +246,7 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 		return domain.ErrUserNonAuthorized
 	}
 
-	target, err := m.usrStorage.GetUserByID(ctx, dto.TargetID)
+	target, err := m.userStorage.GetUserByID(ctx, dto.TargetID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -236,7 +265,7 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 		return domain.ErrUserNonAuthorized
 	}
 
-	err = m.usrStorage.UpdateRole(ctx, target.ID, dto.Role)
+	err = m.userStorage.UpdateRole(ctx, target.ID, dto.Role)
 	if err != nil {
 		log.Error("failed to update user's role", logger.Err(err))
 		return err
@@ -254,7 +283,7 @@ func (m Management) ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO)
 		ExpiryAt:    "",
 	}
 
-	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.PushNotificationRoutingKey, msg)
+	err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.PushNotification, msg)
 	if err != nil {
 		log.Error("failed to publish push notification", logger.Err(err))
 		return err
@@ -267,7 +296,7 @@ func (m Management) DeleteNonActivatedUsers(ctx context.Context, days int) error
 	const op = "service.management.deleteNonActivatedUsers"
 	log := m.log.With(slog.String("op", op))
 
-	err := m.usrStorage.DeleteNonActivatedUsers(ctx, days)
+	err := m.userStorage.DeleteNonActivatedUsers(ctx, days)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -285,7 +314,7 @@ func (m Management) ChangePassword(ctx context.Context, dto dtos.ChangeUserPassw
 	const op = "service.management.changePassword"
 	log := m.log.With(slog.String("op", op))
 
-	user, err := m.usrStorage.GetUserByID(ctx, dto.UserID)
+	user, err := m.userStorage.GetUserByID(ctx, dto.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrUserNotFound):
@@ -308,11 +337,83 @@ func (m Management) ChangePassword(ctx context.Context, dto dtos.ChangeUserPassw
 		return domain.ErrInternal
 	}
 
-	err = m.usrStorage.UpdatePassword(ctx, user.ID, passwordHash)
+	err = m.userStorage.UpdatePassword(ctx, user.ID, passwordHash)
 	if err != nil {
 		log.Error("failed to update user password", logger.Err(err))
 		return domain.ErrInternal
 	}
 
 	return nil
+}
+
+func (m Management) ForgotPassword(ctx context.Context, email, barcode string) error {
+	const op = "service.management.forgotPassword"
+	log := m.log.With(slog.String("op", op))
+
+	err := m.checkRateLimit(ctx, email)
+	if err != nil {
+		return err
+	}
+
+	user, err := m.userStorage.GetUserByEmail(ctx, email)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			return domain.ErrUserNotFound
+		default:
+			log.Error("failed to get user", logger.Err(err))
+			return err
+		}
+	}
+
+	if user.Barcode != barcode {
+		return domain.ErrInvalidCredentials
+	}
+
+	token, err := tokens.Generate()
+	if err != nil {
+		return err
+	}
+
+	err = m.tokenStorage.Create(ctx, token, user.ID, time.Minute*15)
+	if err != nil {
+		log.Error("failed to save token", logger.Err(err))
+		return err
+	}
+
+	go func() {
+		msg := struct {
+			Email      string    `json:"email"`
+			Token      string    `json:"token"`
+			ValidUntil time.Time `json:"valid_until"`
+		}{
+			Email:      email,
+			Token:      token,
+			ValidUntil: time.Now().Add(time.Minute * 15),
+		}
+
+		err = m.amqp.Publish(ctx, rabbitmq.UserExchangeName, rabbitmq.UserForgotPassword, msg)
+		if err != nil {
+			log.Error("failed to publish push notification", logger.Err(err))
+		}
+	}()
+
+	return nil
+}
+
+func (m Management) checkRateLimit(ctx context.Context, email string) error {
+	lastRequestTime, err := m.rateLimitStorage.GetLastRequestTime(ctx, email)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return m.rateLimitStorage.UpdateLastRequestTime(ctx, email, time.Now())
+		}
+		return err
+	}
+
+	if time.Since(lastRequestTime) < rateLimitCooldown {
+		return domain.ErrRateLimitExceeded
+	}
+
+	// Update last request time
+	return m.rateLimitStorage.UpdateLastRequestTime(ctx, email, time.Now())
 }

@@ -70,6 +70,24 @@ func (_m *Management) DeleteUser(ctx context.Context, userID int64) error {
 	return r0
 }
 
+// ForgotPassword provides a mock function with given fields: ctx, email, barcode
+func (_m *Management) ForgotPassword(ctx context.Context, email string, barcode string) error {
+	ret := _m.Called(ctx, email, barcode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ForgotPassword")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, email, barcode)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetUser provides a mock function with given fields: ctx, userID
 func (_m *Management) GetUser(ctx context.Context, userID int64) (*domain.User, error) {
 	ret := _m.Called(ctx, userID)

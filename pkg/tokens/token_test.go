@@ -1,4 +1,4 @@
-package session
+package tokens
 
 import (
 	"crypto/rand"
@@ -23,13 +23,13 @@ func TestGenerateToken(t *testing.T) {
 	rand.Reader = &MockRand{}
 
 	expectedToken := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" // this is hexadecimal representation of the 0..31 slice of bytes
-	token, err := GenerateToken()
+	token, err := Generate()
 
 	if !assert.NoError(t, err) {
 		assert.Equal(t, "", token, fmt.Sprintf("if error returned, should return empty string, but got: %s", token))
 	}
 
-	require.NoError(t, err, fmt.Sprintf("GenerateToken returned an error: %v", err))
-	assert.Equal(t, expectedToken, token, fmt.Sprintf("GenerateToken did not return the expected token. Expected: %s, Got: %s", expectedToken, token))
+	require.NoError(t, err, fmt.Sprintf("Generate returned an error: %v", err))
+	assert.Equal(t, expectedToken, token, fmt.Sprintf("Generate did not return the expected token. Expected: %s, Got: %s", expectedToken, token))
 
 }

@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const rateLimitTimeFormat = time.RFC3339
+
 type Storage struct {
 	client *redis.Client
 }
@@ -81,4 +83,26 @@ func (s Storage) Delete(ctx context.Context, sessionToken string) error {
 	}
 
 	return nil
+}
+
+func (s Storage) GetLastRequestTime(ctx context.Context, email string) (time.Time, error) {
+
+	val, err := s.client.Get(ctx, email).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return time.Time{}, domain.ErrNotFound
+		}
+		return time.Time{}, err
+	}
+
+	t, err := time.Parse(rateLimitTimeFormat, val)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return t, nil
+}
+
+func (s Storage) UpdateLastRequestTime(ctx context.Context, email string, t time.Time) error {
+	return s.client.Set(ctx, email, t.Format(rateLimitTimeFormat), 0).Err()
 }

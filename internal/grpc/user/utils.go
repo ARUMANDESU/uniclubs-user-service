@@ -3,7 +3,7 @@ package user
 import (
 	"errors"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
-	"github.com/ARUMANDESU/uniclubs-user-service/pkg/token/jwt"
+	"github.com/ARUMANDESU/uniclubs-user-service/pkg/tokens/jwt"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -13,6 +13,7 @@ import (
 func handleError(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrUserNotFound),
+		errors.Is(err, domain.ErrNotFound),
 		errors.Is(err, domain.ErrActivationTokenNotFound),
 		errors.Is(err, domain.ErrRefreshTokenNotFound):
 		return status.Error(codes.NotFound, err.Error())
@@ -27,8 +28,10 @@ func handleError(err error) error {
 		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, domain.ErrUserNonAuthorized):
 		return status.Error(codes.PermissionDenied, err.Error())
+	case errors.Is(err, domain.ErrRateLimitExceeded):
+		return status.Error(codes.ResourceExhausted, err.Error())
 	default:
-		return status.Error(codes.Internal, err.Error())
+		return status.Error(codes.Internal, "internal error")
 	}
 }
 

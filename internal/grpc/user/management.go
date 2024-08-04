@@ -6,6 +6,7 @@ import (
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain/dtos"
 	validation "github.com/go-ozzo/ozzo-validation"
+	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,6 +25,7 @@ type Management interface {
 	DeleteUser(ctx context.Context, userID int64) error
 	ChangeUserRole(ctx context.Context, dto *dtos.ChangeRoleDTO) error
 	ChangePassword(ctx context.Context, dto dtos.ChangeUserPasswordDTO) error
+	ForgotPassword(ctx context.Context, email, barcode string) error
 }
 
 func (s serverApi) UpdateUser(ctx context.Context, req *userv1.UpdateUserRequest) (*userv1.UserObject, error) {
@@ -196,8 +198,20 @@ func (s serverApi) ChangeUserPassword(ctx context.Context, req *userv1.ChangeUse
 }
 
 func (s serverApi) ForgotPassword(ctx context.Context, req *userv1.ForgotPasswordRequest) (*empty.Empty, error) {
-	//TODO implement me
-	panic("implement me")
+	err := validation.ValidateStruct(req,
+		validation.Field(&req.Email, validation.Required, is.Email),
+		validation.Field(&req.Barcode, validation.Required),
+	)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = s.management.ForgotPassword(ctx, req.GetEmail(), req.GetBarcode())
+	if err != nil {
+		return nil, handleError(err)
+	}
+
+	return &empty.Empty{}, nil
 }
 
 func (s serverApi) ResetPassword(ctx context.Context, req *userv1.ResetPasswordRequest) (*empty.Empty, error) {

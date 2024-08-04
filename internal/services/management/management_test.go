@@ -19,19 +19,31 @@ import (
 type Suite struct {
 	Management *Management
 	*mocks.UserStorage
+	*mocks.TokenStorage
+	*mocks.RateLimitStorage
 	*mocks.Amqp
 }
 
 func Setup(t *testing.T) *Suite {
 	t.Helper()
-	UserStorage := mocks.NewUserStorage(t)
-	Amqp := mocks.NewAmqp(t)
+	userStorage := mocks.NewUserStorage(t)
+	amqp := mocks.NewAmqp(t)
+	tokenStorage := mocks.NewTokenStorage(t)
+	rateLimitStorage := mocks.NewRateLimitStorage(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	return &Suite{
-		Management:  New(logger, UserStorage, Amqp),
-		UserStorage: UserStorage,
-		Amqp:        Amqp,
+		Management: New(ServiceConfig{
+			Log:              logger,
+			UserStorage:      userStorage,
+			TokenStorage:     tokenStorage,
+			RateLimitStorage: rateLimitStorage,
+			Amqp:             amqp,
+		}),
+		UserStorage:      userStorage,
+		TokenStorage:     tokenStorage,
+		RateLimitStorage: rateLimitStorage,
+		Amqp:             amqp,
 	}
 }
 

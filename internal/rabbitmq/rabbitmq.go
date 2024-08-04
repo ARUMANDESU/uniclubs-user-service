@@ -8,13 +8,18 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+type ExchangeName string
+type RoutingKey string
+
 const (
-	UserExchangeName              = "user-exchange"
-	PushNotificationRoutingKey    = "user.notification.push"
-	UserRegisteredEventRoutingKey = "user.notification.email.registered"
-	UserUpdatedEventRoutingKey    = "user.event.updated"
-	UserActivatedEventRoutingKey  = "user.event.activated"
-	UserDeletedEventRoutingKey    = "user.event.deleted"
+	UserExchangeName ExchangeName = "user-exchange"
+
+	PushNotification   RoutingKey = "user.notification.push"
+	UserRegistered     RoutingKey = "user.notification.email.registered"
+	UserUpdated        RoutingKey = "user.event.updated"
+	UserActivated      RoutingKey = "user.event.activated"
+	UserDeleted        RoutingKey = "user.event.deleted"
+	UserForgotPassword RoutingKey = "user.notification.email.forgot-password"
 )
 
 type Rabbitmq struct {
@@ -54,7 +59,7 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 	}
 
 	err = ch.ExchangeDeclare(
-		UserExchangeName,
+		string(UserExchangeName),
 		"topic",
 		true,
 		false,
@@ -73,7 +78,7 @@ func New(cfg config.Rabbitmq) (*Rabbitmq, error) {
 	}, nil
 }
 
-func (r *Rabbitmq) Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error {
+func (r *Rabbitmq) Publish(ctx context.Context, exchangeName ExchangeName, routingKey RoutingKey, msg any) error {
 	const op = "Rabbitmq.Publish"
 
 	bytes, err := json.Marshal(msg)
@@ -83,8 +88,8 @@ func (r *Rabbitmq) Publish(ctx context.Context, exchangeName string, routingKey 
 
 	err = r.ch.PublishWithContext(
 		ctx,
-		exchangeName,
-		routingKey,
+		string(exchangeName),
+		string(routingKey),
 		false,
 		false,
 		amqp.Publishing{

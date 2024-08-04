@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/config"
 	"github.com/ARUMANDESU/uniclubs-user-service/internal/domain"
+	"github.com/ARUMANDESU/uniclubs-user-service/internal/rabbitmq"
 	"github.com/stretchr/testify/mock"
 	"io"
 	"log/slog"
@@ -70,7 +71,7 @@ type MockAmqp struct {
 	mock.Mock
 }
 
-func (m *MockAmqp) Publish(ctx context.Context, exchangeName string, routingKey string, msg any) error {
+func (m *MockAmqp) Publish(ctx context.Context, exchangeName rabbitmq.ExchangeName, routingKey rabbitmq.RoutingKey, msg any) error {
 	args := m.Called(ctx, exchangeName, routingKey, msg)
 	return args.Error(0)
 }

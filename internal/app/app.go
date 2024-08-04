@@ -45,7 +45,13 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	}
 
 	authService := auth.New(log, cfg.Jwt, postgres, redisStorage, redisStorage, rabbitMQ)
-	managementService := management.New(log, postgres, rabbitMQ)
+	managementService := management.New(management.ServiceConfig{
+		Log:              log,
+		UserStorage:      postgres,
+		TokenStorage:     redisStorage,
+		RateLimitStorage: redisStorage,
+		Amqp:             rabbitMQ,
+	})
 
 	grpcApp := grpcapp.New(log, cfg.GRPC.Port, authService, managementService)
 	cronApp, err := cron.New(log, managementService)

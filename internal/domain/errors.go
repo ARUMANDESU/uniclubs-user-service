@@ -8,6 +8,9 @@ var (
 	ErrUserExists        = errors.New("user already exists")
 	ErrUserNotFound      = errors.New("user not found")
 	ErrUserNonAuthorized = errors.New("user is not authorized")
+
+	ErrRateLimitExceeded = errors.New("rate limit exceeded")
+	ErrNotFound          = errors.New("not found")
 )
 
 var (
